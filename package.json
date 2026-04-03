@@ -1,0 +1,18 @@
+{
+  "name": "mathy",
+  "version": "1.0.0",
+  "description": "mathy is a fun app for people learning basic math. at the top is a question like \"3 + 5\" and then multiple shapes fall from the top of the screen with answers and the game is to click on the right answer before it falls off the bottom of the screen. 3 points for getting it right and -1 for getting it wrong. every 20 point increment means the shapes start falling faster! try to beat your high score!",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "typescript": "^6.0.2",
+    "vite": "^8.0.3"
+  }
+}
