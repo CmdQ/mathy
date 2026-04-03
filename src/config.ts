@@ -45,4 +45,15 @@ export const CONFIG = {
   SHAPE_LABEL_FONT: 'bold 22px system-ui, sans-serif',
   TITLE_FONT: 'bold 52px system-ui, sans-serif',
   SUBTITLE_FONT: '24px system-ui, sans-serif',
+
+  // User profiles
+  MAX_USERNAME_LENGTH: 8,
+  KEYPAD_ROWS: [
+    ['A', 'B', 'C', 'D', 'E', 'F', 'G'],
+    ['H', 'I', 'J', 'K', 'L', 'M', 'N'],
+    ['O', 'P', 'Q', 'R', 'S', 'T', 'U'],
+    ['V', 'W', 'X', 'Y', 'Z', '1', '2'],
+    ['3', '4', '5', '6', '7', '8', '9'],
+    ['0', '⌫', 'OK'],
+  ] as readonly string[][],
 } as const;

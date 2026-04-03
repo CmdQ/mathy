@@ -1,5 +1,6 @@
 import { CONFIG } from './config';
 import { Shape } from './shape';
+import type { UserProfile } from './user';
 
 interface Particle {
   x: number;
@@ -185,6 +186,265 @@ export class Renderer {
     this.ctx.fillStyle = '#54a0ff';
     this.ctx.font = 'bold 28px system-ui, sans-serif';
     this.ctx.fillText('Tap to Play Again', cx, cy + 90);
+  }
+
+  // --- User profile screens ---
+
+  drawUserSelect(users: UserProfile[], deleteMode: boolean): void {
+    this.clear();
+    const cx = this.width / 2;
+
+    // Title
+    this.ctx.fillStyle = '#feca57';
+    this.ctx.font = CONFIG.TITLE_FONT;
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'middle';
+    this.ctx.fillText('MATHY', cx, 60);
+
+    this.ctx.fillStyle = CONFIG.TEXT_COLOR;
+    this.ctx.font = CONFIG.SUBTITLE_FONT;
+    this.ctx.fillText('Choose Player', cx, 110);
+
+    // User list
+    const startY = 160;
+    const rowH = 60;
+    const btnW = Math.min(360, this.width * 0.8);
+
+    for (let i = 0; i < users.length; i++) {
+      const y = startY + i * rowH;
+      const btnX = cx - btnW / 2;
+
+      // User button background
+      this.ctx.fillStyle = '#16213e';
+      this.ctx.beginPath();
+      this.ctx.roundRect(btnX, y, btnW, 48, 10);
+      this.ctx.fill();
+
+      // User name
+      this.ctx.fillStyle = CONFIG.TEXT_COLOR;
+      this.ctx.font = 'bold 22px system-ui, sans-serif';
+      this.ctx.textAlign = 'left';
+      this.ctx.fillText(users[i].name, btnX + 16, y + 25);
+
+      // High score
+      this.ctx.fillStyle = '#aaa';
+      this.ctx.font = '18px system-ui, sans-serif';
+      this.ctx.textAlign = 'right';
+      const scoreX = deleteMode ? btnX + btnW - 52 : btnX + btnW - 16;
+      this.ctx.fillText(`Best: ${users[i].highScore}`, scoreX, y + 25);
+
+      // Delete icon (trash) when in delete mode
+      if (deleteMode) {
+        this.ctx.fillStyle = '#ff6b6b';
+        this.ctx.font = '22px system-ui, sans-serif';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('✕', btnX + btnW - 24, y + 25);
+      }
+    }
+
+    // "New User" button
+    const newY = startY + users.length * rowH + 10;
+    this.ctx.fillStyle = '#54a0ff';
+    this.ctx.beginPath();
+    this.ctx.roundRect(cx - btnW / 2, newY, btnW, 48, 10);
+    this.ctx.fill();
+
+    this.ctx.fillStyle = '#fff';
+    this.ctx.font = 'bold 22px system-ui, sans-serif';
+    this.ctx.textAlign = 'center';
+    this.ctx.fillText('+ New Player', cx, newY + 25);
+
+    // Delete mode toggle (only if users exist)
+    if (users.length > 0) {
+      const toggleY = newY + 70;
+      this.ctx.fillStyle = deleteMode ? '#ff6b6b' : '#555';
+      this.ctx.font = '18px system-ui, sans-serif';
+      this.ctx.textAlign = 'center';
+      this.ctx.fillText(
+        deleteMode ? 'Done Deleting' : 'Delete a Player',
+        cx,
+        toggleY,
+      );
+    }
+  }
+
+  getUserSelectLayout(userCount: number): {
+    userButtons: { x: number; y: number; w: number; h: number }[];
+    newUserButton: { x: number; y: number; w: number; h: number };
+    deleteToggle: { x: number; y: number; w: number; h: number };
+    deleteIcons: { x: number; y: number; w: number; h: number }[];
+  } {
+    const cx = this.width / 2;
+    const startY = 160;
+    const rowH = 60;
+    const btnW = Math.min(360, this.width * 0.8);
+    const btnX = cx - btnW / 2;
+
+    const userButtons = [];
+    const deleteIcons = [];
+    for (let i = 0; i < userCount; i++) {
+      const y = startY + i * rowH;
+      userButtons.push({ x: btnX, y, w: btnW, h: 48 });
+      deleteIcons.push({ x: btnX + btnW - 48, y, w: 48, h: 48 });
+    }
+
+    const newY = startY + userCount * rowH + 10;
+    const toggleY = newY + 55;
+
+    return {
+      userButtons,
+      newUserButton: { x: btnX, y: newY, w: btnW, h: 48 },
+      deleteToggle: { x: btnX, y: toggleY, w: btnW, h: 30 },
+      deleteIcons,
+    };
+  }
+
+  drawNameEntry(currentName: string): void {
+    this.clear();
+    const cx = this.width / 2;
+
+    // Prompt
+    this.ctx.fillStyle = CONFIG.TEXT_COLOR;
+    this.ctx.font = CONFIG.SUBTITLE_FONT;
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'middle';
+    this.ctx.fillText('Enter Your Name', cx, 50);
+
+    // Name display
+    const displayName = currentName || '_';
+    this.ctx.fillStyle = '#feca57';
+    this.ctx.font = 'bold 40px system-ui, sans-serif';
+    this.ctx.fillText(displayName, cx, 110);
+
+    // Character count
+    this.ctx.fillStyle = '#555';
+    this.ctx.font = '16px system-ui, sans-serif';
+    this.ctx.fillText(`${currentName.length}/${CONFIG.MAX_USERNAME_LENGTH}`, cx, 145);
+
+    // Draw keypad
+    const layout = this.getKeypadLayout();
+    for (const key of layout) {
+      const isSpecial = key.label === '⌫' || key.label === 'OK';
+      const isOk = key.label === 'OK';
+      const isDisabled = isOk && currentName.length === 0;
+
+      this.ctx.fillStyle = isDisabled ? '#222' : isOk ? '#54a0ff' : '#16213e';
+      this.ctx.beginPath();
+      this.ctx.roundRect(key.x, key.y, key.w, key.h, 6);
+      this.ctx.fill();
+
+      this.ctx.fillStyle = isDisabled ? '#555' : isSpecial ? '#fff' : CONFIG.TEXT_COLOR;
+      this.ctx.font = isSpecial ? 'bold 20px system-ui, sans-serif' : '20px system-ui, sans-serif';
+      this.ctx.textAlign = 'center';
+      this.ctx.textBaseline = 'middle';
+      this.ctx.fillText(key.label, key.x + key.w / 2, key.y + key.h / 2);
+    }
+  }
+
+  getKeypadLayout(): { label: string; x: number; y: number; w: number; h: number }[] {
+    const rows = CONFIG.KEYPAD_ROWS;
+    const keyW = 42;
+    const keyH = 42;
+    const gap = 6;
+    const startY = 175;
+    const cx = this.width / 2;
+
+    const keys: { label: string; x: number; y: number; w: number; h: number }[] = [];
+
+    for (let r = 0; r < rows.length; r++) {
+      const row = rows[r];
+      const rowWidth = row.length * keyW + (row.length - 1) * gap;
+      const startX = cx - rowWidth / 2;
+
+      for (let c = 0; c < row.length; c++) {
+        const label = row[c];
+        let w = keyW;
+        let x = startX + c * (keyW + gap);
+
+        // Make OK button wider
+        if (label === 'OK') {
+          w = keyW * 2 + gap;
+        }
+        // Make backspace wider
+        if (label === '⌫') {
+          w = keyW * 1.5;
+        }
+
+        keys.push({ label, x, y: startY + r * (keyH + gap), w, h: keyH });
+      }
+    }
+
+    return keys;
+  }
+
+  drawDeleteConfirm(userName: string, isFinal: boolean): void {
+    this.clear();
+    const cx = this.width / 2;
+    const cy = this.height / 2;
+
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'middle';
+
+    // Warning icon
+    this.ctx.fillStyle = '#ff6b6b';
+    this.ctx.font = 'bold 48px system-ui, sans-serif';
+    this.ctx.fillText(isFinal ? '⚠️' : '🗑️', cx, cy - 100);
+
+    // Message
+    this.ctx.fillStyle = CONFIG.TEXT_COLOR;
+    this.ctx.font = 'bold 28px system-ui, sans-serif';
+    this.ctx.fillText(
+      isFinal ? 'Are you sure?' : `Delete ${userName}?`,
+      cx,
+      cy - 40,
+    );
+
+    this.ctx.fillStyle = '#aaa';
+    this.ctx.font = '20px system-ui, sans-serif';
+    this.ctx.fillText(
+      isFinal
+        ? 'This will remove all scores and data.'
+        : 'This player\'s data will be lost.',
+      cx,
+      cy,
+    );
+
+    // Yes / No buttons
+    const btnW = 140;
+    const btnH = 50;
+    const gap = 20;
+
+    // No button
+    this.ctx.fillStyle = '#16213e';
+    this.ctx.beginPath();
+    this.ctx.roundRect(cx - btnW - gap / 2, cy + 40, btnW, btnH, 10);
+    this.ctx.fill();
+    this.ctx.fillStyle = CONFIG.TEXT_COLOR;
+    this.ctx.font = 'bold 24px system-ui, sans-serif';
+    this.ctx.fillText('Cancel', cx - btnW / 2 - gap / 2, cy + 65);
+
+    // Yes button
+    this.ctx.fillStyle = '#ff6b6b';
+    this.ctx.beginPath();
+    this.ctx.roundRect(cx + gap / 2, cy + 40, btnW, btnH, 10);
+    this.ctx.fill();
+    this.ctx.fillStyle = '#fff';
+    this.ctx.fillText('Delete', cx + btnW / 2 + gap / 2, cy + 65);
+  }
+
+  getDeleteConfirmLayout(): {
+    cancelBtn: { x: number; y: number; w: number; h: number };
+    deleteBtn: { x: number; y: number; w: number; h: number };
+  } {
+    const cx = this.width / 2;
+    const cy = this.height / 2;
+    const btnW = 140;
+    const btnH = 50;
+    const gap = 20;
+    return {
+      cancelBtn: { x: cx - btnW - gap / 2, y: cy + 40, w: btnW, h: btnH },
+      deleteBtn: { x: cx + gap / 2, y: cy + 40, w: btnW, h: btnH },
+    };
   }
 
   // Particle effects
