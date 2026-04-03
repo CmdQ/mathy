@@ -38,6 +38,8 @@ Wrong answer choices are always plausible (close to the real answer) so you can'
 
 ## Getting Started
 
+Requires **Node.js ≥ 20.19.0** (see `.nvmrc`).
+
 ```bash
 npm install
 npm run dev

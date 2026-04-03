@@ -6,6 +6,8 @@ Mathy is a touch-first math learning game (ages 8–12) built with TypeScript an
 
 ## Build & Run
 
+Requires **Node.js ≥ 20.19.0** (see `.nvmrc`).
+
 ```bash
 npm run dev        # Start Vite dev server with hot reload
 npm run build      # TypeScript check + production build (output: dist/)
