@@ -38,6 +38,8 @@ Wrong answer choices are always plausible (close to the real answer) so you can'
 
 ## Getting Started
 
+Requires **Node.js ≥ 20.19.0** (see `.nvmrc`).
+
 ```bash
 npm install
 npm run dev
@@ -47,6 +49,8 @@ Then open **http://localhost:5173/** in a browser (works with touch or mouse).
 
 ```bash
 npm run build      # Production build → dist/
+npm test           # Run all unit tests
+npm test -- src/question.test.ts  # Run a single test file
 npx tsc --noEmit   # Type-check only
 ```
 

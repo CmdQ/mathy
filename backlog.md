@@ -1,7 +1,6 @@
 # Feature Backlog
 
-## Update README
-Rewrite readme.md with proper project description, screenshots, setup instructions, and tech stack info.
+## ~~Update README~~ ✅
 
 ## User Profiles
 Add a name entry screen on first launch. Store the chosen name in localStorage. Display the player name on the HUD and game-over screen. Support switching profiles.
