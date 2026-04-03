@@ -47,6 +47,8 @@ Then open **http://localhost:5173/** in a browser (works with touch or mouse).
 
 ```bash
 npm run build      # Production build → dist/
+npm test           # Run all unit tests
+npm test -- src/question.test.ts  # Run a single test file
 npx tsc --noEmit   # Type-check only
 ```
 
