@@ -36,7 +36,11 @@ Wrong answer choices are always plausible (close to the real answer) so you can'
 - **Web Audio API** — synthesized sound effects (no audio files)
 - **PointerEvent API** — unified touch and mouse input
 
-## Getting Started
+## Play Online
+
+**[martinb35.github.io/mathy](https://martinb35.github.io/mathy/)** — works in any modern browser. Tap "Install" in Chrome/Edge to add it to your home screen as an app.
+
+## Getting Started (Dev)
 
 Requires **Node.js ≥ 20.19.0** (see `.nvmrc`).
 

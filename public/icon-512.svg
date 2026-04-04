@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="77" fill="#1a1a2e"/>
+  <text x="256" y="230" text-anchor="middle" dominant-baseline="central" font-family="system-ui,sans-serif" font-weight="bold" font-size="128" fill="#feca57">MATHY</text>
+  <text x="256" y="358" text-anchor="middle" dominant-baseline="central" font-family="system-ui,sans-serif" font-size="61" fill="#54a0ff">+ &#x2212; &#xD7; &#xF7;</text>
+</svg>
