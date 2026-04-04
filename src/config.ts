@@ -22,11 +22,9 @@ export const CONFIG = {
   COUNTDOWN_SECONDS: 3,
   NEW_QUESTION_DELAY_MS: 600,
 
-  // Question generation ranges per operation
-  ADD_RANGE: [1, 50] as const,
-  SUB_RANGE: [1, 50] as const,
-  MUL_RANGE: [2, 12] as const,
-  DIV_RANGE: [2, 12] as const,
+  // Level progression
+  LEVELS_PER_OP: 10,
+  LEVEL_UNLOCK_THRESHOLD: 40,
 
   // Number of wrong answers
   WRONG_ANSWER_COUNT: 3,
@@ -59,8 +57,7 @@ export const CONFIG = {
     ['0', '⌫', 'OK'],
   ] as readonly string[][],
 
-  // Operation unlocks
+  // Operation order
   OP_ORDER: ['+', '−', '×', '÷'],
-  UNLOCK_THRESHOLD: 75,
   CELEBRATION_DURATION_MS: 2500,
 } as const;

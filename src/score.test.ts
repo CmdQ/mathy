@@ -72,11 +72,20 @@ describe('ScoreManager', () => {
     expect(sm.addCorrect()).toBe(false);
   });
 
-  it('increases fall speed with level', () => {
+  it('returns flat base fall speed when not all complete', () => {
     const sm = makeScoreManager();
-    const speed1 = sm.getFallSpeed();
+    sm.setActiveLevel('+', 1);
     for (let i = 0; i < 7; i++) sm.addCorrect();
-    const speed2 = sm.getFallSpeed();
+    const speed = sm.getFallSpeed(false);
+    expect(speed).toBe(80); // BASE_FALL_SPEED
+  });
+
+  it('increases fall speed with level when all complete', () => {
+    const sm = makeScoreManager();
+    sm.setActiveLevel('+', 1);
+    const speed1 = sm.getFallSpeed(true);
+    for (let i = 0; i < 7; i++) sm.addCorrect();
+    const speed2 = sm.getFallSpeed(true);
     expect(speed2).toBeGreaterThan(speed1);
   });
 
@@ -92,6 +101,7 @@ describe('ScoreManager', () => {
     const userStore = new UserStore();
     const profile = userStore.create('SCORER');
     const sm = new ScoreManager(userStore, profile);
+    sm.setActiveLevel('+', 1);
     for (let i = 0; i < 5; i++) sm.addCorrect();
     sm.saveHighScore();
 
@@ -103,10 +113,12 @@ describe('ScoreManager', () => {
     const userStore = new UserStore();
     const profile = userStore.create('SCORER');
     const sm1 = new ScoreManager(userStore, profile);
+    sm1.setActiveLevel('+', 1);
     for (let i = 0; i < 10; i++) sm1.addCorrect();
     sm1.saveHighScore();
 
     const sm2 = new ScoreManager(userStore, userStore.get('SCORER')!);
+    sm2.setActiveLevel('+', 1);
     for (let i = 0; i < 3; i++) sm2.addCorrect();
     sm2.saveHighScore();
 
@@ -114,80 +126,91 @@ describe('ScoreManager', () => {
   });
 });
 
-describe('ScoreManager unlock detection', () => {
+describe('ScoreManager level unlock detection', () => {
   beforeEach(() => {
     localStorageMock.clear();
-  });
-
-  it('returns null when not using single op', () => {
-    const userStore = new UserStore();
-    const profile = userStore.create('MULTI');
-    const sm = new ScoreManager(userStore, profile);
-    sm.setActiveOps(['+', '−']);
-    for (let i = 0; i < 25; i++) sm.addCorrect(); // score = 75
-    expect(sm.checkUnlock()).toBeNull();
   });
 
   it('returns null when below threshold', () => {
     const userStore = new UserStore();
     const profile = userStore.create('LOW');
     const sm = new ScoreManager(userStore, profile);
-    sm.setActiveOps(['+']);
-    for (let i = 0; i < 24; i++) sm.addCorrect(); // score = 72
+    sm.setActiveLevel('+', 1);
+    for (let i = 0; i < 13; i++) sm.addCorrect(); // score = 39
     expect(sm.checkUnlock()).toBeNull();
   });
 
-  it('unlocks next op when threshold reached on single op', () => {
+  it('unlocks next level when threshold reached', () => {
     const userStore = new UserStore();
     const profile = userStore.create('UNLOCK');
     const sm = new ScoreManager(userStore, profile);
-    sm.setActiveOps(['+']);
-    for (let i = 0; i < 25; i++) sm.addCorrect(); // score = 75
+    sm.setActiveLevel('+', 1);
+    // Score needs to reach 40 (LEVEL_UNLOCK_THRESHOLD)
+    for (let i = 0; i < 14; i++) sm.addCorrect(); // score = 42
     const result = sm.checkUnlock();
     expect(result).not.toBeNull();
-    expect(result!.unlocked).toBe('−');
+    expect(result!.type).toBe('level');
+    expect(result!.unlockedLevel).toBe(2);
+    expect(result!.message).toBe('Level 2 Unlocked!');
   });
 
-  it('persists unlock to user profile', () => {
+  it('persists level unlock to user profile', () => {
     const userStore = new UserStore();
     const profile = userStore.create('PERSIST');
     const sm = new ScoreManager(userStore, profile);
-    sm.setActiveOps(['+']);
-    for (let i = 0; i < 25; i++) sm.addCorrect();
+    sm.setActiveLevel('+', 1);
+    for (let i = 0; i < 14; i++) sm.addCorrect();
     sm.checkUnlock();
     const saved = userStore.get('PERSIST');
-    expect(saved?.unlockedOps).toContain('−');
+    expect(saved?.progress['+'].unlockedLevel).toBe(2);
+  });
+
+  it('unlocks next op after completing level 10', () => {
+    const userStore = new UserStore();
+    const profile = userStore.create('OPUNLOCK');
+    // Give them all 10 levels of addition
+    profile.progress['+'].unlockedLevel = 10;
+    userStore.save(profile);
+
+    const sm = new ScoreManager(userStore, userStore.get('OPUNLOCK')!);
+    sm.setActiveLevel('+', 10);
+    for (let i = 0; i < 14; i++) sm.addCorrect(); // score = 42
+    const result = sm.checkUnlock();
+    expect(result).not.toBeNull();
+    expect(result!.type).toBe('op');
+    expect(result!.unlockedOp).toBe('−');
+    expect(result!.message).toBe('Subtraction Unlocked!');
   });
 
   it('only triggers unlock once per game', () => {
     const userStore = new UserStore();
     const profile = userStore.create('ONCE');
     const sm = new ScoreManager(userStore, profile);
-    sm.setActiveOps(['+']);
-    for (let i = 0; i < 25; i++) sm.addCorrect();
+    sm.setActiveLevel('+', 1);
+    for (let i = 0; i < 14; i++) sm.addCorrect();
     expect(sm.checkUnlock()).not.toBeNull();
     expect(sm.checkUnlock()).toBeNull(); // second call returns null
   });
 
-  it('does not unlock if already unlocked', () => {
+  it('does not unlock if next level already unlocked', () => {
     const userStore = new UserStore();
     const profile = userStore.create('ALREADY');
-    profile.unlockedOps = ['+', '−'];
+    profile.progress['+'].unlockedLevel = 5;
     userStore.save(profile);
     const sm = new ScoreManager(userStore, userStore.get('ALREADY')!);
-    sm.setActiveOps(['+']);
-    for (let i = 0; i < 25; i++) sm.addCorrect();
+    sm.setActiveLevel('+', 3); // playing level 3, but 4 already unlocked
+    for (let i = 0; i < 14; i++) sm.addCorrect();
     expect(sm.checkUnlock()).toBeNull();
   });
 
-  it('saves per-op best score for single-op games', () => {
+  it('saves per-level best score', () => {
     const userStore = new UserStore();
     const profile = userStore.create('OPSCORE');
     const sm = new ScoreManager(userStore, profile);
-    sm.setActiveOps(['+']);
+    sm.setActiveLevel('+', 1);
     for (let i = 0; i < 5; i++) sm.addCorrect(); // score = 15
     sm.saveHighScore();
     const saved = userStore.get('OPSCORE');
-    expect(saved?.opBestScores['+']).toBe(15);
+    expect(saved?.progress['+'].levelBestScores[0]).toBe(15);
   });
 });

@@ -1,7 +1,7 @@
 import { CONFIG } from './config';
 import type { Operation } from './question';
 import { Shape } from './shape';
-import type { UserProfile } from './user';
+import type { OpProgress, UserProfile } from './user';
 
 interface Particle {
   x: number;
@@ -550,7 +550,7 @@ export class Renderer {
     };
   }
 
-  // --- Operation select screen ---
+  // --- Operation picker screen ---
 
   private static readonly OP_LABELS: Record<string, string> = {
     '+': 'Addition',
@@ -559,11 +559,7 @@ export class Renderer {
     '÷': 'Division',
   };
 
-  drawOpSelect(
-    unlockedOps: Operation[],
-    selectedOps: Operation[],
-    opBestScores: Partial<Record<Operation, number>>,
-  ): void {
+  drawOpPicker(progress: Record<Operation, OpProgress>): void {
     this.clear();
     this.drawBackButton();
     const cx = this.width / 2;
@@ -574,114 +570,181 @@ export class Renderer {
 
     this.ctx.fillStyle = CONFIG.TEXT_COLOR;
     this.ctx.font = this.font(CONFIG.SUBTITLE_FONT_SIZE);
-    this.ctx.fillText('Choose Operations', cx, this.s(50));
+    this.ctx.fillText('Choose Operation', cx, this.s(50));
 
-    const layout = this.getOpSelectLayout();
+    const layout = this.getOpPickerLayout();
     for (let i = 0; i < allOps.length; i++) {
-      const op = allOps[i];
+      const op = allOps[i] as Operation;
       const btn = layout.opButtons[i];
-      const isUnlocked = unlockedOps.includes(op);
-      const isSelected = selectedOps.includes(op);
+      const prog = progress[op];
+      const isUnlocked = prog.unlockedLevel > 0;
 
       // Button background
-      if (!isUnlocked) {
-        this.ctx.fillStyle = '#111';
-      } else if (isSelected) {
-        this.ctx.fillStyle = '#16213e';
-        // Selected border
-        this.ctx.strokeStyle = '#54a0ff';
-        this.ctx.lineWidth = this.s(3);
-        this.ctx.beginPath();
-        this.ctx.roundRect(btn.x, btn.y, btn.w, btn.h, this.s(12));
-        this.ctx.stroke();
-      } else {
-        this.ctx.fillStyle = '#16213e';
-      }
+      this.ctx.fillStyle = isUnlocked ? '#16213e' : '#111';
       this.ctx.beginPath();
       this.ctx.roundRect(btn.x, btn.y, btn.w, btn.h, this.s(12));
       this.ctx.fill();
 
-      // Op symbol
+      // Op symbol (left side)
+      const symbolX = btn.x + this.s(50);
       this.ctx.fillStyle = isUnlocked ? '#feca57' : '#555';
       this.ctx.font = this.font(36, 'bold');
-      this.ctx.fillText(op, btn.x + btn.w / 2, btn.y + this.s(30));
+      this.ctx.textAlign = 'center';
+      this.ctx.fillText(op, symbolX, btn.y + btn.h / 2 - this.s(8));
 
-      // Label
+      // Label below symbol
       this.ctx.fillStyle = isUnlocked ? CONFIG.TEXT_COLOR : '#444';
-      this.ctx.font = this.font(16);
-      this.ctx.fillText(Renderer.OP_LABELS[op] ?? op, btn.x + btn.w / 2, btn.y + this.s(58));
+      this.ctx.font = this.font(13);
+      this.ctx.fillText(Renderer.OP_LABELS[op] ?? op, symbolX, btn.y + btn.h / 2 + this.s(16));
+
+      // Progress bar (right side)
+      const barX = btn.x + this.s(100);
+      const barW = btn.w - this.s(120);
+      const barH = this.s(14);
+      const barY = btn.y + btn.h / 2 - barH / 2;
 
       if (isUnlocked) {
-        // Best score
-        const best = opBestScores[op] ?? 0;
-        this.ctx.fillStyle = '#aaa';
-        this.ctx.font = this.font(14);
-        this.ctx.fillText(`Best: ${best}`, btn.x + btn.w / 2, btn.y + this.s(78));
+        // Bar background
+        this.ctx.fillStyle = '#0a0a1a';
+        this.ctx.beginPath();
+        this.ctx.roundRect(barX, barY, barW, barH, this.s(4));
+        this.ctx.fill();
 
-        // Checkmark for selected
-        if (isSelected) {
-          this.ctx.fillStyle = '#54a0ff';
-          this.ctx.font = this.font(20, 'bold');
-          this.ctx.fillText('✓', btn.x + btn.w - this.s(20), btn.y + this.s(16));
-        }
+        // Bar fill
+        const fillW = (prog.unlockedLevel / CONFIG.LEVELS_PER_OP) * barW;
+        this.ctx.fillStyle = prog.unlockedLevel >= CONFIG.LEVELS_PER_OP ? '#48dbfb' : '#54a0ff';
+        this.ctx.beginPath();
+        this.ctx.roundRect(barX, barY, fillW, barH, this.s(4));
+        this.ctx.fill();
+
+        // Progress text
+        this.ctx.fillStyle = '#aaa';
+        this.ctx.font = this.font(12);
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText(`${prog.unlockedLevel}/${CONFIG.LEVELS_PER_OP}`, barX + barW / 2, barY + barH + this.s(12));
       } else {
-        const prerequisiteOp = i > 0 ? allOps[i - 1] : undefined;
-        const unlockText = prerequisiteOp
-          ? `Score ${CONFIG.UNLOCK_THRESHOLD} on ${prerequisiteOp}`
-          : `Score ${CONFIG.UNLOCK_THRESHOLD}`;
+        // Lock icon
         this.ctx.fillStyle = '#555';
         this.ctx.font = this.font(20);
-        this.ctx.fillText('🔒', btn.x + btn.w / 2, btn.y + this.s(78));
-        this.ctx.font = this.font(12);
-        this.ctx.fillText(unlockText, btn.x + btn.w / 2, btn.y + this.s(96));
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('🔒', barX + barW / 2, btn.y + btn.h / 2);
       }
     }
-
-    // Play button
-    const playBtn = layout.playButton;
-    const hasSelection = selectedOps.length > 0;
-    this.ctx.fillStyle = hasSelection ? '#54a0ff' : '#222';
-    this.ctx.beginPath();
-    this.ctx.roundRect(playBtn.x, playBtn.y, playBtn.w, playBtn.h, this.s(10));
-    this.ctx.fill();
-
-    this.ctx.fillStyle = hasSelection ? '#fff' : '#555';
-    this.ctx.font = this.font(26, 'bold');
-    this.ctx.fillText('Play!', cx, playBtn.y + playBtn.h / 2);
   }
 
-  getOpSelectLayout(): {
+  getOpPickerLayout(): {
     opButtons: { x: number; y: number; w: number; h: number }[];
-    playButton: { x: number; y: number; w: number; h: number };
   } {
     const cx = this.width / 2;
-    const btnW = Math.min(this.s(160), this.width * 0.4);
-    const btnH = this.s(110);
+    const btnW = Math.min(this.s(340), this.width * 0.85);
+    const btnH = this.s(80);
     const gap = this.s(12);
     const startY = this.s(90);
 
     const opButtons = [];
     for (let i = 0; i < 4; i++) {
-      const col = i % 2;
-      const row = Math.floor(i / 2);
-      const x = cx - btnW - gap / 2 + col * (btnW + gap);
-      const y = startY + row * (btnH + gap);
+      const x = cx - btnW / 2;
+      const y = startY + i * (btnH + gap);
       opButtons.push({ x, y, w: btnW, h: btnH });
     }
 
-    const playBtnW = Math.min(this.s(300), this.width * 0.7);
-    const playBtnH = this.s(50);
-    const playY = startY + 2 * (btnH + gap) + this.s(20);
+    return { opButtons };
+  }
 
-    return {
-      opButtons,
-      playButton: { x: cx - playBtnW / 2, y: playY, w: playBtnW, h: playBtnH },
-    };
+  // --- Level picker screen ---
+
+  private static readonly LEVEL_LABELS: Record<string, string[]> = {
+    '+': ['0-9', '10-19', '20-29', '30-39', '40-49', '50-59', '60-69', '70-79', '80-89', '0-99'],
+    '−': ['0-9', '10-19', '20-29', '30-39', '40-49', '50-59', '60-69', '70-79', '80-89', '0-99'],
+    '×': ['×1', '×2', '×3', '×4', '×5', '×6', '×7', '×8', '×9', 'Mix'],
+    '÷': ['÷1', '÷2', '÷3', '÷4', '÷5', '÷6', '÷7', '÷8', '÷9', 'Mix'],
+  };
+
+  drawLevelPicker(op: Operation, progress: OpProgress): void {
+    this.clear();
+    this.drawBackButton();
+    const cx = this.width / 2;
+
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'middle';
+
+    // Title
+    this.ctx.fillStyle = '#feca57';
+    this.ctx.font = this.font(36, 'bold');
+    this.ctx.fillText(op, cx, this.s(50));
+    this.ctx.fillStyle = CONFIG.TEXT_COLOR;
+    this.ctx.font = this.font(18);
+    this.ctx.fillText(Renderer.OP_LABELS[op] ?? op, cx, this.s(78));
+
+    const layout = this.getLevelPickerLayout();
+    const labels = Renderer.LEVEL_LABELS[op] ?? [];
+
+    for (let i = 0; i < CONFIG.LEVELS_PER_OP; i++) {
+      const btn = layout.levelButtons[i];
+      const lvl = i + 1;
+      const isUnlocked = lvl <= progress.unlockedLevel;
+      const best = progress.levelBestScores[i] ?? 0;
+
+      // Button bg
+      this.ctx.fillStyle = isUnlocked ? '#16213e' : '#111';
+      this.ctx.beginPath();
+      this.ctx.roundRect(btn.x, btn.y, btn.w, btn.h, this.s(10));
+      this.ctx.fill();
+
+      if (isUnlocked) {
+        // Level number
+        this.ctx.fillStyle = '#feca57';
+        this.ctx.font = this.font(22, 'bold');
+        this.ctx.fillText(String(lvl), btn.x + btn.w / 2, btn.y + this.s(20));
+
+        // Range label
+        this.ctx.fillStyle = CONFIG.TEXT_COLOR;
+        this.ctx.font = this.font(14);
+        this.ctx.fillText(labels[i] ?? '', btn.x + btn.w / 2, btn.y + this.s(40));
+
+        // Best score
+        if (best > 0) {
+          this.ctx.fillStyle = '#aaa';
+          this.ctx.font = this.font(12);
+          this.ctx.fillText(`Best: ${best}`, btn.x + btn.w / 2, btn.y + this.s(56));
+        }
+      } else {
+        // Lock
+        this.ctx.fillStyle = '#555';
+        this.ctx.font = this.font(24);
+        this.ctx.fillText('🔒', btn.x + btn.w / 2, btn.y + btn.h / 2);
+      }
+    }
+  }
+
+  getLevelPickerLayout(): {
+    levelButtons: { x: number; y: number; w: number; h: number }[];
+  } {
+    const cx = this.width / 2;
+    const cols = 2;
+    const rows = 5;
+    const gap = this.s(10);
+    const btnW = Math.min(this.s(150), (this.width * 0.85 - gap) / cols);
+    const btnH = this.s(70);
+    const startY = this.s(105);
+    const totalW = cols * btnW + (cols - 1) * gap;
+    const startX = cx - totalW / 2;
+
+    const levelButtons = [];
+    for (let i = 0; i < rows * cols; i++) {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const x = startX + col * (btnW + gap);
+      const y = startY + row * (btnH + gap);
+      levelButtons.push({ x, y, w: btnW, h: btnH });
+    }
+
+    return { levelButtons };
   }
 
   // --- Celebration overlay ---
 
-  drawCelebration(unlockedOp: Operation, progress: number): void {
+  drawCelebration(message: string, progress: number): void {
     // Semi-transparent overlay
     this.ctx.fillStyle = `rgba(0, 0, 0, ${0.8 * Math.min(1, progress * 3)})`;
     this.ctx.fillRect(0, 0, this.width, this.height);
@@ -699,17 +762,12 @@ export class Renderer {
 
     // Big emoji
     this.ctx.font = this.font(72);
-    this.ctx.fillText('🎉', 0, -this.s(70));
+    this.ctx.fillText('🎉', 0, -this.s(50));
 
     // Unlock message
     this.ctx.fillStyle = '#feca57';
-    this.ctx.font = this.font(36, 'bold');
-    const opName = Renderer.OP_LABELS[unlockedOp] ?? unlockedOp;
-    this.ctx.fillText(`${opName}`, 0, -this.s(5));
-
-    this.ctx.fillStyle = '#54a0ff';
-    this.ctx.font = this.font(28, 'bold');
-    this.ctx.fillText('Unlocked!', 0, this.s(35));
+    this.ctx.font = this.font(30, 'bold');
+    this.ctx.fillText(message, 0, this.s(20));
 
     this.ctx.restore();
   }
