@@ -2,12 +2,10 @@ import { CONFIG } from './config';
 import type { Operation } from './question';
 import { UserProfile, UserStore } from './user';
 
-export interface UnlockResult {
-  type: 'level' | 'op' | 'all-complete';
-  unlockedOp?: Operation;
-  unlockedLevel?: number;
-  message: string;
-}
+export type UnlockResult =
+  | { type: 'level'; unlockedOp: Operation; unlockedLevel: number; message: string }
+  | { type: 'op'; unlockedOp: Operation; message: string }
+  | { type: 'all-complete'; message: string };
 
 export class ScoreManager {
   score = 0;

@@ -150,7 +150,9 @@ describe('ScoreManager level unlock detection', () => {
     const result = sm.checkUnlock();
     expect(result).not.toBeNull();
     expect(result!.type).toBe('level');
-    expect(result!.unlockedLevel).toBe(2);
+    if (result!.type === 'level') {
+      expect(result!.unlockedLevel).toBe(2);
+    }
     expect(result!.message).toBe('Level 2 Unlocked!');
   });
 
@@ -178,7 +180,9 @@ describe('ScoreManager level unlock detection', () => {
     const result = sm.checkUnlock();
     expect(result).not.toBeNull();
     expect(result!.type).toBe('op');
-    expect(result!.unlockedOp).toBe('−');
+    if (result!.type === 'op') {
+      expect(result!.unlockedOp).toBe('−');
+    }
     expect(result!.message).toBe('Subtraction Unlocked!');
   });
 

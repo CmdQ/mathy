@@ -4,7 +4,7 @@ import { Shape, spawnShapes } from './shape';
 import { Renderer } from './renderer';
 import { InputHandler } from './input';
 import { AudioManager } from './audio';
-import { ScoreManager, UnlockResult } from './score';
+import { ScoreManager } from './score';
 import { UserStore, UserProfile } from './user';
 
 type GameState =
