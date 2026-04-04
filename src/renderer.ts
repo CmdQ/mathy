@@ -33,7 +33,7 @@ export class Renderer {
     this.height = window.innerHeight * dpr;
     this.canvas.width = this.width;
     this.canvas.height = this.height;
-    // Scale UI elements by DPR so they appear the same physical size on all screens
+    // Scale UI elements by DPR so they stay consistent in CSS pixels/layout units
     this._scale = dpr;
   }
 
