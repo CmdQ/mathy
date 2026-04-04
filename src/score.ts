@@ -27,8 +27,8 @@ export class ScoreManager {
     this.unlockChecked = false;
   }
 
-  addCorrect(): boolean {
-    this.score += CONFIG.CORRECT_POINTS;
+  addCorrect(bonus = 0): boolean {
+    this.score += CONFIG.CORRECT_POINTS + bonus;
     this.level = Math.floor(this.score / CONFIG.SPEED_INCREMENT_THRESHOLD) + 1;
     const leveledUp = this.level > this.prevLevel;
     this.prevLevel = this.level;
