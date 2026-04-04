@@ -58,7 +58,7 @@ export const CONFIG = {
   ] as readonly string[][],
 
   // Operation unlocks
-  OP_ORDER: ['+', '−', '×', '÷'] as readonly string[],
+  OP_ORDER: ['+', '−', '×', '÷'],
   UNLOCK_THRESHOLD: 75,
   CELEBRATION_DURATION_MS: 2500,
 } as const;

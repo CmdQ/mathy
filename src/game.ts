@@ -364,7 +364,7 @@ export class Game {
   private handleOpSelectTap(x: number, y: number): void {
     if (!this.currentUser) return;
     const layout = this.renderer.getOpSelectLayout();
-    const allOps = CONFIG.OP_ORDER as readonly Operation[];
+    const allOps = CONFIG.OP_ORDER;
 
     // Check op buttons
     for (let i = 0; i < allOps.length; i++) {

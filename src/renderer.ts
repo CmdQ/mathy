@@ -460,7 +460,7 @@ export class Renderer {
   ): void {
     this.clear();
     const cx = this.width / 2;
-    const allOps = CONFIG.OP_ORDER as readonly Operation[];
+    const allOps = CONFIG.OP_ORDER;
 
     this.ctx.textAlign = 'center';
     this.ctx.textBaseline = 'middle';
@@ -518,12 +518,15 @@ export class Renderer {
           this.ctx.fillText('✓', btn.x + btn.w - 20, btn.y + 16);
         }
       } else {
-        // Lock icon and threshold
+        const prerequisiteOp = i > 0 ? allOps[i - 1] : undefined;
+        const unlockText = prerequisiteOp
+          ? `Score ${CONFIG.UNLOCK_THRESHOLD} on ${prerequisiteOp}`
+          : `Score ${CONFIG.UNLOCK_THRESHOLD}`;
         this.ctx.fillStyle = '#555';
         this.ctx.font = '20px system-ui, sans-serif';
         this.ctx.fillText('🔒', btn.x + btn.w / 2, btn.y + 78);
         this.ctx.font = '12px system-ui, sans-serif';
-        this.ctx.fillText(`Score ${CONFIG.UNLOCK_THRESHOLD} on ${allOps[i - 1]}`, btn.x + btn.w / 2, btn.y + 96);
+        this.ctx.fillText(unlockText, btn.x + btn.w / 2, btn.y + 96);
       }
     }
 

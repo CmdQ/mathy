@@ -47,7 +47,7 @@ export class ScoreManager {
     if (this.score < CONFIG.UNLOCK_THRESHOLD) return null;
 
     const currentOp = this.activeOps[0];
-    const opOrder = CONFIG.OP_ORDER as readonly Operation[];
+    const opOrder = CONFIG.OP_ORDER;
     const idx = opOrder.indexOf(currentOp);
     if (idx === -1 || idx >= opOrder.length - 1) return null;
 
