@@ -40,11 +40,11 @@ export const CONFIG = {
   BG_COLOR: '#1a1a2e',
   QUESTION_BG: '#16213e',
   TEXT_COLOR: '#eee',
-  HUD_FONT: 'bold 20px system-ui, sans-serif',
-  QUESTION_FONT: 'bold 36px system-ui, sans-serif',
-  SHAPE_LABEL_FONT: 'bold 22px system-ui, sans-serif',
-  TITLE_FONT: 'bold 52px system-ui, sans-serif',
-  SUBTITLE_FONT: '24px system-ui, sans-serif',
+  HUD_FONT_SIZE: 20,
+  QUESTION_FONT_SIZE: 36,
+  SHAPE_LABEL_FONT_SIZE: 22,
+  TITLE_FONT_SIZE: 52,
+  SUBTITLE_FONT_SIZE: 24,
 
   // User profiles
   MAX_USERNAME_LENGTH: 8,

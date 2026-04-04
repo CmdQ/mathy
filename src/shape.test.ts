@@ -116,4 +116,23 @@ describe('spawnShapes', () => {
       expect(s.x).toBeLessThan(800);
     }
   });
+
+  it('scales radius with uiScale parameter', () => {
+    const shape1 = new Shape(100, 0, 42, 80, 1);
+    const shape2 = new Shape(100, 0, 42, 80, 2);
+    expect(shape2.radius).toBeGreaterThan(shape1.radius);
+  });
+
+  it('stores drawScale for font sizing', () => {
+    const shape = new Shape(100, 0, 42, 80, 2.5);
+    expect(shape.drawScale).toBe(2.5);
+  });
+
+  it('positions shapes within canvas width with non-1 scale', () => {
+    const shapes = spawnShapes([1, 2, 3, 4], 1200, 80, 2);
+    for (const s of shapes) {
+      expect(s.x).toBeGreaterThan(0);
+      expect(s.x).toBeLessThan(1200);
+    }
+  });
 });

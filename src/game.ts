@@ -451,7 +451,7 @@ export class Game {
   private nextQuestion(): void {
     this.question = createQuestion(this.selectedOps);
     const speed = this.scoreManager.getFallSpeed();
-    this.shapes = spawnShapes(this.question.choices, this.renderer.getWidth(), speed);
+    this.shapes = spawnShapes(this.question.choices, this.renderer.getWidth(), speed, this.renderer.getScale());
   }
 
   private endGame(): void {
