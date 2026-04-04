@@ -131,6 +131,9 @@ export class Renderer {
     this.ctx.textAlign = 'center';
     this.ctx.textBaseline = 'middle';
     this.ctx.fillText(text, this.width / 2, bannerH / 2);
+
+    // Pause button in the banner
+    this.drawPauseButton();
   }
 
   drawHUD(score: number, highScore: number, level: number): void {
@@ -148,9 +151,6 @@ export class Renderer {
     this.ctx.textAlign = 'right';
     this.ctx.fillStyle = '#aaa';
     this.ctx.fillText(`Best: ${highScore}`, this.width - this.s(16), this.s(90));
-
-    // Pause button (two bars)
-    this.drawPauseButton();
   }
 
   private drawPauseButton(): void {
@@ -167,7 +167,17 @@ export class Renderer {
   }
 
   getPauseButtonRect(): { x: number; y: number; w: number; h: number } {
-    return { x: this.width - this.s(56), y: this.s(82), w: this.s(44), h: this.s(36) };
+    const buttonW = this.s(44);
+    const buttonH = this.s(40);
+    const rightPadding = this.s(8);
+    const bannerH = this.s(80);
+
+    return {
+      x: this.width - rightPadding - buttonW,
+      y: (bannerH - buttonH) / 2,
+      w: buttonW,
+      h: buttonH,
+    };
   }
 
   drawPauseScreen(): void {
