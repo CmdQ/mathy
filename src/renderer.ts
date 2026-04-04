@@ -1,4 +1,5 @@
 import { CONFIG } from './config';
+import type { Operation } from './question';
 import { Shape } from './shape';
 import type { UserProfile } from './user';
 
@@ -441,6 +442,168 @@ export class Renderer {
       cancelBtn: { x: cx - btnW - gap / 2, y: cy + 40, w: btnW, h: btnH },
       deleteBtn: { x: cx + gap / 2, y: cy + 40, w: btnW, h: btnH },
     };
+  }
+
+  // --- Operation select screen ---
+
+  private static readonly OP_LABELS: Record<string, string> = {
+    '+': 'Addition',
+    '−': 'Subtraction',
+    '×': 'Multiplication',
+    '÷': 'Division',
+  };
+
+  drawOpSelect(
+    unlockedOps: Operation[],
+    selectedOps: Operation[],
+    opBestScores: Partial<Record<Operation, number>>,
+  ): void {
+    this.clear();
+    const cx = this.width / 2;
+    const allOps = CONFIG.OP_ORDER;
+
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'middle';
+
+    this.ctx.fillStyle = CONFIG.TEXT_COLOR;
+    this.ctx.font = CONFIG.SUBTITLE_FONT;
+    this.ctx.fillText('Choose Operations', cx, 50);
+
+    const layout = this.getOpSelectLayout();
+    for (let i = 0; i < allOps.length; i++) {
+      const op = allOps[i];
+      const btn = layout.opButtons[i];
+      const isUnlocked = unlockedOps.includes(op);
+      const isSelected = selectedOps.includes(op);
+
+      // Button background
+      if (!isUnlocked) {
+        this.ctx.fillStyle = '#111';
+      } else if (isSelected) {
+        this.ctx.fillStyle = '#16213e';
+        // Selected border
+        this.ctx.strokeStyle = '#54a0ff';
+        this.ctx.lineWidth = 3;
+        this.ctx.beginPath();
+        this.ctx.roundRect(btn.x, btn.y, btn.w, btn.h, 12);
+        this.ctx.stroke();
+      } else {
+        this.ctx.fillStyle = '#16213e';
+      }
+      this.ctx.beginPath();
+      this.ctx.roundRect(btn.x, btn.y, btn.w, btn.h, 12);
+      this.ctx.fill();
+
+      // Op symbol
+      this.ctx.fillStyle = isUnlocked ? '#feca57' : '#555';
+      this.ctx.font = 'bold 36px system-ui, sans-serif';
+      this.ctx.fillText(op, btn.x + btn.w / 2, btn.y + 30);
+
+      // Label
+      this.ctx.fillStyle = isUnlocked ? CONFIG.TEXT_COLOR : '#444';
+      this.ctx.font = '16px system-ui, sans-serif';
+      this.ctx.fillText(Renderer.OP_LABELS[op] ?? op, btn.x + btn.w / 2, btn.y + 58);
+
+      if (isUnlocked) {
+        // Best score
+        const best = opBestScores[op] ?? 0;
+        this.ctx.fillStyle = '#aaa';
+        this.ctx.font = '14px system-ui, sans-serif';
+        this.ctx.fillText(`Best: ${best}`, btn.x + btn.w / 2, btn.y + 78);
+
+        // Checkmark for selected
+        if (isSelected) {
+          this.ctx.fillStyle = '#54a0ff';
+          this.ctx.font = 'bold 20px system-ui, sans-serif';
+          this.ctx.fillText('✓', btn.x + btn.w - 20, btn.y + 16);
+        }
+      } else {
+        const prerequisiteOp = i > 0 ? allOps[i - 1] : undefined;
+        const unlockText = prerequisiteOp
+          ? `Score ${CONFIG.UNLOCK_THRESHOLD} on ${prerequisiteOp}`
+          : `Score ${CONFIG.UNLOCK_THRESHOLD}`;
+        this.ctx.fillStyle = '#555';
+        this.ctx.font = '20px system-ui, sans-serif';
+        this.ctx.fillText('🔒', btn.x + btn.w / 2, btn.y + 78);
+        this.ctx.font = '12px system-ui, sans-serif';
+        this.ctx.fillText(unlockText, btn.x + btn.w / 2, btn.y + 96);
+      }
+    }
+
+    // Play button
+    const playBtn = layout.playButton;
+    const hasSelection = selectedOps.length > 0;
+    this.ctx.fillStyle = hasSelection ? '#54a0ff' : '#222';
+    this.ctx.beginPath();
+    this.ctx.roundRect(playBtn.x, playBtn.y, playBtn.w, playBtn.h, 10);
+    this.ctx.fill();
+
+    this.ctx.fillStyle = hasSelection ? '#fff' : '#555';
+    this.ctx.font = 'bold 26px system-ui, sans-serif';
+    this.ctx.fillText('Play!', cx, playBtn.y + playBtn.h / 2);
+  }
+
+  getOpSelectLayout(): {
+    opButtons: { x: number; y: number; w: number; h: number }[];
+    playButton: { x: number; y: number; w: number; h: number };
+  } {
+    const cx = this.width / 2;
+    const btnW = Math.min(160, this.width * 0.4);
+    const btnH = 110;
+    const gap = 12;
+    const startY = 90;
+
+    const opButtons = [];
+    for (let i = 0; i < 4; i++) {
+      const col = i % 2;
+      const row = Math.floor(i / 2);
+      const x = cx - btnW - gap / 2 + col * (btnW + gap);
+      const y = startY + row * (btnH + gap);
+      opButtons.push({ x, y, w: btnW, h: btnH });
+    }
+
+    const playBtnW = Math.min(300, this.width * 0.7);
+    const playY = startY + 2 * (btnH + gap) + 20;
+
+    return {
+      opButtons,
+      playButton: { x: cx - playBtnW / 2, y: playY, w: playBtnW, h: 50 },
+    };
+  }
+
+  // --- Celebration overlay ---
+
+  drawCelebration(unlockedOp: Operation, progress: number): void {
+    // Semi-transparent overlay
+    this.ctx.fillStyle = `rgba(0, 0, 0, ${0.8 * Math.min(1, progress * 3)})`;
+    this.ctx.fillRect(0, 0, this.width, this.height);
+
+    const cx = this.width / 2;
+    const cy = this.height / 2;
+    const scale = Math.min(1, progress * 2);
+
+    this.ctx.save();
+    this.ctx.translate(cx, cy);
+    this.ctx.scale(scale, scale);
+
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'middle';
+
+    // Big emoji
+    this.ctx.font = '72px system-ui, sans-serif';
+    this.ctx.fillText('🎉', 0, -70);
+
+    // Unlock message
+    this.ctx.fillStyle = '#feca57';
+    this.ctx.font = 'bold 36px system-ui, sans-serif';
+    const opName = Renderer.OP_LABELS[unlockedOp] ?? unlockedOp;
+    this.ctx.fillText(`${opName}`, 0, -5);
+
+    this.ctx.fillStyle = '#54a0ff';
+    this.ctx.font = 'bold 28px system-ui, sans-serif';
+    this.ctx.fillText('Unlocked!', 0, 35);
+
+    this.ctx.restore();
   }
 
   // Particle effects
