@@ -16,11 +16,13 @@ export class UserStore {
   }
 
   list(): UserProfile[] {
-    return [...this.profiles];
+    return this.profiles.map((p) => ({ ...p, unlockedOps: [...p.unlockedOps] }));
   }
 
   get(name: string): UserProfile | undefined {
-    return this.profiles.find((p) => p.name === name);
+    const p = this.profiles.find((p) => p.name === name);
+    if (!p) return undefined;
+    return { ...p, unlockedOps: [...p.unlockedOps] };
   }
 
   create(name: string): UserProfile {
@@ -55,10 +57,28 @@ export class UserStore {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return [];
-      return JSON.parse(raw) as UserProfile[];
+      const data = JSON.parse(raw);
+      if (!Array.isArray(data)) return [];
+      return data.map((p: unknown) => this.sanitize(p)).filter((p): p is UserProfile => p !== null);
     } catch {
       return [];
     }
+  }
+
+  private sanitize(raw: unknown): UserProfile | null {
+    if (!raw || typeof raw !== 'object') return null;
+    const obj = raw as Record<string, unknown>;
+    const name = typeof obj.name === 'string' ? obj.name.trim().toUpperCase().slice(0, 8) : '';
+    if (!name) return null;
+    const validOps: Operation[] = ['+', '−', '×', '÷'];
+    const unlockedOps = Array.isArray(obj.unlockedOps)
+      ? (obj.unlockedOps as unknown[]).filter((op): op is Operation => validOps.includes(op as Operation))
+      : ['+' as Operation];
+    return {
+      name,
+      highScore: typeof obj.highScore === 'number' && isFinite(obj.highScore) ? Math.max(0, obj.highScore) : 0,
+      unlockedOps: unlockedOps.length > 0 ? unlockedOps : ['+'],
+    };
   }
 
   private persist(): void {

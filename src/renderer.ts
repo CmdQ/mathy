@@ -185,7 +185,7 @@ export class Renderer {
 
     this.ctx.fillStyle = '#54a0ff';
     this.ctx.font = 'bold 28px system-ui, sans-serif';
-    this.ctx.fillText('Tap to Play Again', cx, cy + 90);
+    this.ctx.fillText('Tap to Continue', cx, cy + 90);
   }
 
   // --- User profile screens ---
@@ -256,14 +256,15 @@ export class Renderer {
 
     // Delete mode toggle (only if users exist)
     if (users.length > 0) {
-      const toggleY = newY + 70;
+      const layout = this.getUserSelectLayout(users.length);
+      const tr = layout.deleteToggle;
       this.ctx.fillStyle = deleteMode ? '#ff6b6b' : '#555';
       this.ctx.font = '18px system-ui, sans-serif';
       this.ctx.textAlign = 'center';
       this.ctx.fillText(
         deleteMode ? 'Done Deleting' : 'Delete a Player',
         cx,
-        toggleY,
+        tr.y + tr.h / 2,
       );
     }
   }
@@ -353,24 +354,19 @@ export class Renderer {
 
     for (let r = 0; r < rows.length; r++) {
       const row = rows[r];
-      const rowWidth = row.length * keyW + (row.length - 1) * gap;
+      const widths = row.map((label) => {
+        if (label === 'OK') return keyW * 2 + gap;
+        if (label === '⌫') return keyW * 1.5;
+        return keyW;
+      });
+      const rowWidth = widths.reduce((sum, w) => sum + w, 0) + (row.length - 1) * gap;
       const startX = cx - rowWidth / 2;
+      let x = startX;
 
       for (let c = 0; c < row.length; c++) {
-        const label = row[c];
-        let w = keyW;
-        let x = startX + c * (keyW + gap);
-
-        // Make OK button wider
-        if (label === 'OK') {
-          w = keyW * 2 + gap;
-        }
-        // Make backspace wider
-        if (label === '⌫') {
-          w = keyW * 1.5;
-        }
-
-        keys.push({ label, x, y: startY + r * (keyH + gap), w, h: keyH });
+        const w = widths[c];
+        keys.push({ label: row[c], x, y: startY + r * (keyH + gap), w, h: keyH });
+        x += w + gap;
       }
     }
 
