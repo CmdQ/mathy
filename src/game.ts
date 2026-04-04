@@ -113,6 +113,7 @@ export class Game {
     }
 
     this.renderer.updateParticles(dt);
+    this.renderer.updateBgSymbols(dt);
   }
 
   private updatePlaying(dt: number): void {
