@@ -167,7 +167,17 @@ export class Renderer {
   }
 
   getPauseButtonRect(): { x: number; y: number; w: number; h: number } {
-    return { x: this.width - this.s(52), y: this.s(20), w: this.s(44), h: this.s(40) };
+    const buttonW = this.s(44);
+    const buttonH = this.s(40);
+    const rightPadding = this.s(8);
+    const bannerH = this.s(80);
+
+    return {
+      x: this.width - rightPadding - buttonW,
+      y: (bannerH - buttonH) / 2,
+      w: buttonW,
+      h: buttonH,
+    };
   }
 
   drawPauseScreen(): void {
