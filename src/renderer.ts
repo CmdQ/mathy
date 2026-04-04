@@ -82,7 +82,7 @@ export class Renderer {
 
   updateBgSymbols(dt: number): void {
     for (const sym of this.bgSymbols) {
-      sym.y -= (sym.speed / this.height) * dt;
+      sym.y -= (sym.speed * this._scale / this.height) * dt;
       if (sym.y < -0.05) {
         sym.y = 1.05;
         sym.x = Math.random();

@@ -108,15 +108,14 @@ export class Shape {
         break;
     }
 
-    // 3D radial gradient fill — lighter top-left, darker bottom-right
+    // Linear gradient fill — light top-left, dark bottom-right
     const grad = ctx.createLinearGradient(-r * 0.5, -r, r * 0.5, r);
     grad.addColorStop(0, this.lightenColor(this.color, 45));
     grad.addColorStop(0.45, this.color);
     grad.addColorStop(1, this.darkenColor(this.color, 50));
     ctx.fillStyle = grad;
-    ctx.fill();
 
-    // Floating shadow — large, soft, offset downward for depth
+    // Floating shadow + fill in a single pass
     ctx.shadowColor = 'rgba(0,0,0,0.5)';
     ctx.shadowBlur = 20 * this.drawScale;
     ctx.shadowOffsetX = 3 * this.drawScale;
