@@ -12,7 +12,8 @@ type GameState =
   | 'name-entry'
   | 'confirm-delete'
   | 'confirm-delete-final'
-  | 'op-select'
+  | 'op-picker'
+  | 'level-picker'
   | 'start'
   | 'countdown'
   | 'playing'
@@ -42,11 +43,12 @@ export class Game {
   private deleteMode = false;
   private deleteTarget: UserProfile | null = null;
 
-  // Operation select state
-  private selectedOps: Operation[] = ['+'];
+  // Operation / level select state
+  private selectedOp: Operation = '+';
+  private selectedLevel = 1;
 
   // Celebration state
-  private celebrationOp: Operation | null = null;
+  private celebrationMessage = '';
   private celebrationTimer = 0;
 
   // Wrong answer tracking per question (#7)
@@ -138,6 +140,13 @@ export class Game {
     );
   }
 
+  private isAllComplete(): boolean {
+    if (!this.currentUser) return false;
+    return CONFIG.OP_ORDER.every(
+      (op) => this.currentUser!.progress[op as Operation].unlockedLevel >= CONFIG.LEVELS_PER_OP,
+    );
+  }
+
   private render(): void {
     switch (this.state) {
       case 'user-select':
@@ -156,11 +165,21 @@ export class Game {
         this.renderer.drawDeleteConfirm(this.deleteTarget?.name ?? '', true);
         break;
 
-      case 'op-select':
-        this.renderer.drawOpSelect(
-          this.currentUser?.unlockedOps ?? ['+'],
-          this.selectedOps,
-          this.currentUser?.opBestScores ?? {},
+      case 'op-picker':
+        this.renderer.drawOpPicker(
+          this.currentUser?.progress ?? {
+            '+': { unlockedLevel: 1, levelBestScores: [] },
+            '−': { unlockedLevel: 0, levelBestScores: [] },
+            '×': { unlockedLevel: 0, levelBestScores: [] },
+            '÷': { unlockedLevel: 0, levelBestScores: [] },
+          },
+        );
+        break;
+
+      case 'level-picker':
+        this.renderer.drawLevelPicker(
+          this.selectedOp,
+          this.currentUser?.progress[this.selectedOp] ?? { unlockedLevel: 1, levelBestScores: [] },
         );
         break;
 
@@ -189,10 +208,10 @@ export class Game {
           );
           this.renderer.drawShapes(this.shapes);
           this.renderer.drawParticles();
-          if (this.state === 'celebration' && this.celebrationOp) {
+          if (this.state === 'celebration' && this.celebrationMessage) {
             const duration = CONFIG.CELEBRATION_DURATION_MS / 1000;
             const progress = 1 - this.celebrationTimer / duration;
-            this.renderer.drawCelebration(this.celebrationOp, progress);
+            this.renderer.drawCelebration(this.celebrationMessage, progress);
           }
         }
         break;
@@ -237,17 +256,25 @@ export class Game {
         this.handleDeleteConfirmTap(x, y);
         break;
 
-      case 'op-select':
+      case 'op-picker':
         if (this.hitTest(x, y, this.renderer.getBackButtonRect())) {
           this.state = 'user-select';
         } else {
-          this.handleOpSelectTap(x, y);
+          this.handleOpPickerTap(x, y);
+        }
+        break;
+
+      case 'level-picker':
+        if (this.hitTest(x, y, this.renderer.getBackButtonRect())) {
+          this.state = 'op-picker';
+        } else {
+          this.handleLevelPickerTap(x, y);
         }
         break;
 
       case 'start':
         if (this.hitTest(x, y, this.renderer.getBackButtonRect())) {
-          this.state = 'op-select';
+          this.state = 'level-picker';
         } else {
           this.startCountdown();
         }
@@ -372,8 +399,7 @@ export class Game {
   private selectUser(profile: UserProfile): void {
     this.currentUser = profile;
     this.scoreManager = new ScoreManager(this.userStore, profile);
-    this.selectedOps = profile.unlockedOps.length > 0 ? [profile.unlockedOps[0]] : ['+'];
-    this.state = 'op-select';
+    this.state = 'op-picker';
   }
 
   private hitTest(
@@ -384,34 +410,36 @@ export class Game {
     return x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h;
   }
 
-  private handleOpSelectTap(x: number, y: number): void {
+  private handleOpPickerTap(x: number, y: number): void {
     if (!this.currentUser) return;
-    const layout = this.renderer.getOpSelectLayout();
+    const layout = this.renderer.getOpPickerLayout();
     const allOps = CONFIG.OP_ORDER;
 
-    // Check op buttons
     for (let i = 0; i < allOps.length; i++) {
       if (this.hitTest(x, y, layout.opButtons[i])) {
-        const op = allOps[i];
-        if (!this.currentUser.unlockedOps.includes(op)) return; // locked
-
-        const idx = this.selectedOps.indexOf(op);
-        if (idx >= 0) {
-          // Deselect (but keep at least one)
-          if (this.selectedOps.length > 1) {
-            this.selectedOps.splice(idx, 1);
-          }
-        } else {
-          this.selectedOps.push(op);
-        }
+        const op = allOps[i] as Operation;
+        if (this.currentUser.progress[op].unlockedLevel === 0) return; // locked
+        this.selectedOp = op;
+        this.state = 'level-picker';
         return;
       }
     }
+  }
 
-    // Check play button
-    if (this.hitTest(x, y, layout.playButton) && this.selectedOps.length > 0) {
-      this.scoreManager.setActiveOps(this.selectedOps);
-      this.state = 'start';
+  private handleLevelPickerTap(x: number, y: number): void {
+    if (!this.currentUser) return;
+    const layout = this.renderer.getLevelPickerLayout();
+    const progress = this.currentUser.progress[this.selectedOp];
+
+    for (let i = 0; i < CONFIG.LEVELS_PER_OP; i++) {
+      if (this.hitTest(x, y, layout.levelButtons[i])) {
+        const lvl = i + 1;
+        if (lvl > progress.unlockedLevel) return; // locked
+        this.selectedLevel = lvl;
+        this.scoreManager.setActiveLevel(this.selectedOp, this.selectedLevel);
+        this.state = 'start';
+        return;
+      }
     }
   }
 
@@ -442,12 +470,12 @@ export class Game {
           this.audio.levelUp();
         }
 
-        // Check for operation unlock
+        // Check for unlock
         const unlock = this.scoreManager.checkUnlock();
         if (unlock) {
           // Refresh current user data
           this.currentUser = this.userStore.get(this.currentUser!.name) ?? this.currentUser;
-          this.celebrationOp = unlock.unlocked;
+          this.celebrationMessage = unlock.message;
           this.celebrationTimer = CONFIG.CELEBRATION_DURATION_MS / 1000;
           this.state = 'celebration';
           this.audio.levelUp();
@@ -480,8 +508,8 @@ export class Game {
 
   private nextQuestion(): void {
     this.wrongCount = 0;
-    this.question = createQuestion(this.selectedOps);
-    const speed = this.scoreManager.getFallSpeed();
+    this.question = createQuestion(this.selectedOp, this.selectedLevel);
+    const speed = this.scoreManager.getFallSpeed(this.isAllComplete());
     this.shapes = spawnShapes(this.question.choices, this.renderer.getWidth(), speed, this.renderer.getScale());
   }
 
@@ -496,8 +524,7 @@ export class Game {
       // Refresh user data (may have new unlocks)
       this.currentUser = this.userStore.get(this.currentUser.name) ?? this.currentUser;
       this.scoreManager = new ScoreManager(this.userStore, this.currentUser);
-      this.selectedOps = this.currentUser.unlockedOps.length > 0 ? [this.currentUser.unlockedOps[0]] : ['+'];
-      this.state = 'op-select';
+      this.state = 'op-picker';
     } else {
       this.state = 'user-select';
     }

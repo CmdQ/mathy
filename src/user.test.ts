@@ -23,12 +23,15 @@ describe('UserStore', () => {
     expect(store.list()).toEqual([]);
   });
 
-  it('creates a new user', () => {
+  it('creates a new user with default progress', () => {
     const store = new UserStore();
     const profile = store.create('Alice');
     expect(profile.name).toBe('ALICE');
     expect(profile.highScore).toBe(0);
-    expect(profile.unlockedOps).toEqual(['+']);
+    expect(profile.progress['+'].unlockedLevel).toBe(1);
+    expect(profile.progress['−'].unlockedLevel).toBe(0);
+    expect(profile.progress['×'].unlockedLevel).toBe(0);
+    expect(profile.progress['÷'].unlockedLevel).toBe(0);
   });
 
   it('lists created users', () => {
@@ -99,5 +102,66 @@ describe('UserStore', () => {
     localStorageMock.setItem('mathy-users', 'not-json');
     const store = new UserStore();
     expect(store.list()).toEqual([]);
+  });
+});
+
+describe('UserStore migration from old format', () => {
+  beforeEach(() => {
+    localStorageMock.clear();
+  });
+
+  it('migrates old unlockedOps to new progress format', () => {
+    const oldData = [
+      {
+        name: 'MIGRATED',
+        highScore: 100,
+        unlockedOps: ['+', '−', '×'],
+        opBestScores: { '+': 50, '−': 30 },
+      },
+    ];
+    localStorageMock.setItem('mathy-users', JSON.stringify(oldData));
+    const store = new UserStore();
+    const profile = store.get('MIGRATED');
+    expect(profile).toBeDefined();
+    expect(profile!.progress['+'].unlockedLevel).toBe(10);
+    expect(profile!.progress['−'].unlockedLevel).toBe(10);
+    expect(profile!.progress['×'].unlockedLevel).toBe(10);
+    expect(profile!.progress['÷'].unlockedLevel).toBe(0);
+  });
+
+  it('ensures addition always gets at least level 1 during migration', () => {
+    const oldData = [
+      {
+        name: 'NOADD',
+        highScore: 0,
+        unlockedOps: [],
+        opBestScores: {},
+      },
+    ];
+    localStorageMock.setItem('mathy-users', JSON.stringify(oldData));
+    const store = new UserStore();
+    const profile = store.get('NOADD');
+    expect(profile!.progress['+'].unlockedLevel).toBe(1);
+  });
+
+  it('handles new progress format correctly', () => {
+    const newData = [
+      {
+        name: 'NEWUSER',
+        highScore: 50,
+        progress: {
+          '+': { unlockedLevel: 5, levelBestScores: [10, 20, 30, 40, 50] },
+          '−': { unlockedLevel: 2, levelBestScores: [15] },
+          '×': { unlockedLevel: 0, levelBestScores: [] },
+          '÷': { unlockedLevel: 0, levelBestScores: [] },
+        },
+      },
+    ];
+    localStorageMock.setItem('mathy-users', JSON.stringify(newData));
+    const store = new UserStore();
+    const profile = store.get('NEWUSER');
+    expect(profile!.progress['+'].unlockedLevel).toBe(5);
+    expect(profile!.progress['+'].levelBestScores).toEqual([10, 20, 30, 40, 50]);
+    expect(profile!.progress['−'].unlockedLevel).toBe(2);
   });
 });

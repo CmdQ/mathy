@@ -1,10 +1,23 @@
 import type { Operation } from './question';
 
+export interface OpProgress {
+  unlockedLevel: number; // 0 = op locked, 1-10 = highest unlocked level
+  levelBestScores: number[]; // index 0 = level 1 best score, etc.
+}
+
 export interface UserProfile {
   name: string;
   highScore: number;
-  unlockedOps: Operation[];
-  opBestScores: Partial<Record<Operation, number>>;
+  progress: Record<Operation, OpProgress>;
+}
+
+function defaultProgress(): Record<Operation, OpProgress> {
+  return {
+    '+': { unlockedLevel: 1, levelBestScores: [] },
+    '−': { unlockedLevel: 0, levelBestScores: [] },
+    '×': { unlockedLevel: 0, levelBestScores: [] },
+    '÷': { unlockedLevel: 0, levelBestScores: [] },
+  };
 }
 
 const STORAGE_KEY = 'mathy-users';
@@ -17,13 +30,16 @@ export class UserStore {
   }
 
   list(): UserProfile[] {
-    return this.profiles.map((p) => ({ ...p, unlockedOps: [...p.unlockedOps], opBestScores: { ...p.opBestScores } }));
+    return this.profiles.map((p) => ({
+      ...p,
+      progress: cloneProgress(p.progress),
+    }));
   }
 
   get(name: string): UserProfile | undefined {
     const p = this.profiles.find((p) => p.name === name);
     if (!p) return undefined;
-    return { ...p, unlockedOps: [...p.unlockedOps], opBestScores: { ...p.opBestScores } };
+    return { ...p, progress: cloneProgress(p.progress) };
   }
 
   create(name: string): UserProfile {
@@ -35,8 +51,7 @@ export class UserStore {
     const profile: UserProfile = {
       name: trimmed,
       highScore: 0,
-      unlockedOps: ['+'],
-      opBestScores: {},
+      progress: defaultProgress(),
     };
     this.profiles.push(profile);
     this.persist();
@@ -72,24 +87,53 @@ export class UserStore {
     const obj = raw as Record<string, unknown>;
     const name = typeof obj.name === 'string' ? obj.name.trim().toUpperCase().slice(0, 8) : '';
     if (!name) return null;
+
     const validOps: Operation[] = ['+', '−', '×', '÷'];
-    const unlockedOps = Array.isArray(obj.unlockedOps)
-      ? (obj.unlockedOps as unknown[]).filter((op): op is Operation => validOps.includes(op as Operation))
-      : ['+' as Operation];
-    const opBestScores: Partial<Record<Operation, number>> = {};
-    if (obj.opBestScores && typeof obj.opBestScores === 'object') {
+    let progress: Record<Operation, OpProgress>;
+
+    // Migration from old unlockedOps format
+    if (Array.isArray(obj.unlockedOps)) {
+      progress = defaultProgress();
+      const unlockedOps = (obj.unlockedOps as unknown[]).filter(
+        (op): op is Operation => validOps.includes(op as Operation),
+      );
+      for (const op of unlockedOps) {
+        progress[op] = { unlockedLevel: 10, levelBestScores: [] };
+      }
+      // Addition always gets at least 1
+      if (progress['+'].unlockedLevel === 0) {
+        progress['+'].unlockedLevel = 1;
+      }
+    } else if (obj.progress && typeof obj.progress === 'object') {
+      progress = defaultProgress();
+      const rawProgress = obj.progress as Record<string, unknown>;
       for (const op of validOps) {
-        const val = (obj.opBestScores as Record<string, unknown>)[op];
-        if (typeof val === 'number' && isFinite(val)) {
-          opBestScores[op] = Math.max(0, val);
+        const entry = rawProgress[op];
+        if (entry && typeof entry === 'object') {
+          const e = entry as Record<string, unknown>;
+          const ul = typeof e.unlockedLevel === 'number' && isFinite(e.unlockedLevel)
+            ? Math.max(0, Math.min(10, Math.floor(e.unlockedLevel)))
+            : 0;
+          const scores = Array.isArray(e.levelBestScores)
+            ? (e.levelBestScores as unknown[]).map((v) =>
+                typeof v === 'number' && isFinite(v) ? Math.max(0, v) : 0,
+              ).slice(0, 10)
+            : [];
+          progress[op] = { unlockedLevel: ul, levelBestScores: scores };
         }
       }
+      // Addition always gets at least 1
+      if (progress['+'].unlockedLevel === 0) {
+        progress['+'].unlockedLevel = 1;
+      }
+    } else {
+      progress = defaultProgress();
     }
+
     return {
       name,
       highScore: typeof obj.highScore === 'number' && isFinite(obj.highScore) ? Math.max(0, obj.highScore) : 0,
-      unlockedOps: unlockedOps.length > 0 ? unlockedOps : ['+'],
-      opBestScores,
+      progress,
     };
   }
 
@@ -100,4 +144,12 @@ export class UserStore {
       // localStorage may not be available
     }
   }
+}
+
+function cloneProgress(p: Record<Operation, OpProgress>): Record<Operation, OpProgress> {
+  const result = {} as Record<Operation, OpProgress>;
+  for (const op of ['+', '−', '×', '÷'] as Operation[]) {
+    result[op] = { unlockedLevel: p[op].unlockedLevel, levelBestScores: [...p[op].levelBestScores] };
+  }
+  return result;
 }
