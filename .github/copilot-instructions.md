@@ -14,6 +14,8 @@ npm run build      # TypeScript check + production build (output: dist/)
 npx tsc --noEmit   # Type-check only (no output)
 npm test           # Run all tests (Vitest)
 npm test -- src/question.test.ts  # Run a single test file
+npm run lint       # ESLint check
+npm run test:coverage  # Tests with coverage thresholds
 ```
 
 ## Architecture
