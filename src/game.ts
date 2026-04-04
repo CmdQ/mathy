@@ -49,6 +49,9 @@ export class Game {
   private celebrationOp: Operation | null = null;
   private celebrationTimer = 0;
 
+  // Wrong answer tracking per question (#7)
+  private wrongCount = 0;
+
   private lastTime = 0;
 
   constructor(canvas: HTMLCanvasElement) {
@@ -221,7 +224,11 @@ export class Game {
         break;
 
       case 'name-entry':
-        this.handleNameEntryTap(x, y);
+        if (this.hitTest(x, y, this.renderer.getBackButtonRect())) {
+          this.state = 'user-select';
+        } else {
+          this.handleNameEntryTap(x, y);
+        }
         break;
 
       case 'confirm-delete':
@@ -230,18 +237,33 @@ export class Game {
         break;
 
       case 'op-select':
-        this.handleOpSelectTap(x, y);
+        if (this.hitTest(x, y, this.renderer.getBackButtonRect())) {
+          this.state = 'user-select';
+        } else {
+          this.handleOpSelectTap(x, y);
+        }
         break;
 
       case 'start':
-        this.startCountdown();
+        if (this.hitTest(x, y, this.renderer.getBackButtonRect())) {
+          this.state = 'op-select';
+        } else {
+          this.startCountdown();
+        }
         break;
 
       case 'playing':
       case 'new-question':
         if (this.paused) {
-          this.paused = false;
-          this.lastTime = performance.now();
+          // Check quit button first
+          if (this.hitTest(x, y, this.renderer.getPauseQuitRect())) {
+            this.paused = false;
+            this.scoreManager.saveHighScore();
+            this.restartGame();
+          } else {
+            this.paused = false;
+            this.lastTime = performance.now();
+          }
         } else {
           const pr = this.renderer.getPauseButtonRect();
           if (x >= pr.x && x <= pr.x + pr.w && y >= pr.y && y <= pr.y + pr.h) {
@@ -407,10 +429,13 @@ export class Game {
       if (!shape.containsPoint(x, y)) continue;
 
       if (shape.answer === this.question.answer) {
-        // Correct!
+        // Correct! — bonus points for answering higher up (#6)
         shape.triggerPop();
         this.renderer.spawnParticles(shape.x, shape.y, shape.color);
-        const leveledUp = this.scoreManager.addCorrect();
+        const screenH = this.renderer.getHeight();
+        const heightRatio = Math.max(0, 1 - shape.y / screenH);
+        const bonus = Math.round(heightRatio * CONFIG.CORRECT_BONUS_MAX);
+        const leveledUp = this.scoreManager.addCorrect(bonus);
         this.audio.correct();
         if (leveledUp) {
           this.audio.levelUp();
@@ -443,12 +468,17 @@ export class Game {
         shape.triggerShake();
         this.scoreManager.addWrong();
         this.audio.wrong();
+        this.wrongCount++;
+        if (this.wrongCount >= CONFIG.MAX_WRONG_PER_QUESTION) {
+          this.endGame();
+        }
       }
       return; // only process first hit
     }
   }
 
   private nextQuestion(): void {
+    this.wrongCount = 0;
     this.question = createQuestion(this.selectedOps);
     const speed = this.scoreManager.getFallSpeed();
     this.shapes = spawnShapes(this.question.choices, this.renderer.getWidth(), speed, this.renderer.getScale());

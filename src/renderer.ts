@@ -52,6 +52,21 @@ export class Renderer {
     this.ctx.fillRect(0, 0, this.width, this.height);
   }
 
+  // --- Back button (reusable) ---
+
+  drawBackButton(): void {
+    const r = this.getBackButtonRect();
+    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    this.ctx.font = this.font(24, 'bold');
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'middle';
+    this.ctx.fillText('←', r.x + r.w / 2, r.y + r.h / 2);
+  }
+
+  getBackButtonRect(): { x: number; y: number; w: number; h: number } {
+    return { x: this.s(8), y: this.s(8), w: this.s(44), h: this.s(36) };
+  }
+
   drawQuestion(text: string): void {
     const bannerH = this.s(80);
     this.ctx.fillStyle = CONFIG.QUESTION_BG;
@@ -127,6 +142,19 @@ export class Renderer {
     this.ctx.fillStyle = '#54a0ff';
     this.ctx.font = this.font(28, 'bold');
     this.ctx.fillText('Tap to Resume', cx, cy + this.s(60));
+
+    // Quit button
+    this.ctx.fillStyle = '#ff6b6b';
+    this.ctx.font = this.font(20);
+    this.ctx.fillText('Quit Game', cx, cy + this.s(110));
+  }
+
+  getPauseQuitRect(): { x: number; y: number; w: number; h: number } {
+    const cx = this.width / 2;
+    const cy = this.height / 2;
+    const w = this.s(160);
+    const h = this.s(30);
+    return { x: cx - w / 2, y: cy + this.s(95), w, h };
   }
 
   drawShapes(shapes: Shape[]): void {
@@ -137,6 +165,7 @@ export class Renderer {
 
   drawStartScreen(): void {
     this.clear();
+    this.drawBackButton();
 
     // Title
     this.ctx.fillStyle = '#feca57';
@@ -315,6 +344,7 @@ export class Renderer {
 
   drawNameEntry(currentName: string): void {
     this.clear();
+    this.drawBackButton();
     const cx = this.width / 2;
 
     // Prompt
@@ -471,6 +501,7 @@ export class Renderer {
     opBestScores: Partial<Record<Operation, number>>,
   ): void {
     this.clear();
+    this.drawBackButton();
     const cx = this.width / 2;
     const allOps = CONFIG.OP_ORDER;
 

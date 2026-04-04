@@ -1,7 +1,9 @@
 export const CONFIG = {
   // Scoring
   CORRECT_POINTS: 3,
+  CORRECT_BONUS_MAX: 3,
   WRONG_POINTS: -1,
+  MAX_WRONG_PER_QUESTION: 2,
   SPEED_INCREMENT_THRESHOLD: 20,
 
   // Shape spawning
