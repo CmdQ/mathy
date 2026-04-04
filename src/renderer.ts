@@ -18,6 +18,7 @@ export class Renderer {
   private ctx: CanvasRenderingContext2D;
   private width = 0;
   private height = 0;
+  private _scale = 1;
   private particles: Particle[] = [];
 
   constructor(private canvas: HTMLCanvasElement) {
@@ -32,10 +33,18 @@ export class Renderer {
     this.height = window.innerHeight * dpr;
     this.canvas.width = this.width;
     this.canvas.height = this.height;
+    this._scale = Math.min(window.innerWidth, window.innerHeight) / 375;
   }
 
   getWidth(): number { return this.width; }
   getHeight(): number { return this.height; }
+  getScale(): number { return this._scale; }
+
+  private s(px: number): number { return Math.round(px * this._scale); }
+
+  private font(size: number, weight = ''): string {
+    return `${weight ? weight + ' ' : ''}${this.s(size)}px system-ui, sans-serif`;
+  }
 
   clear(): void {
     this.ctx.fillStyle = CONFIG.BG_COLOR;
@@ -43,32 +52,32 @@ export class Renderer {
   }
 
   drawQuestion(text: string): void {
-    const bannerH = 80;
+    const bannerH = this.s(80);
     this.ctx.fillStyle = CONFIG.QUESTION_BG;
     this.ctx.fillRect(0, 0, this.width, bannerH);
 
     this.ctx.fillStyle = CONFIG.TEXT_COLOR;
-    this.ctx.font = CONFIG.QUESTION_FONT;
+    this.ctx.font = this.font(CONFIG.QUESTION_FONT_SIZE, 'bold');
     this.ctx.textAlign = 'center';
     this.ctx.textBaseline = 'middle';
     this.ctx.fillText(text, this.width / 2, bannerH / 2);
   }
 
   drawHUD(score: number, highScore: number, level: number): void {
-    this.ctx.font = CONFIG.HUD_FONT;
+    this.ctx.font = this.font(CONFIG.HUD_FONT_SIZE, 'bold');
     this.ctx.textBaseline = 'top';
 
     this.ctx.textAlign = 'left';
     this.ctx.fillStyle = CONFIG.TEXT_COLOR;
-    this.ctx.fillText(`Score: ${score}`, 16, 90);
+    this.ctx.fillText(`Score: ${score}`, this.s(16), this.s(90));
 
     this.ctx.textAlign = 'center';
     this.ctx.fillStyle = '#feca57';
-    this.ctx.fillText(`Level ${level}`, this.width / 2, 90);
+    this.ctx.fillText(`Level ${level}`, this.width / 2, this.s(90));
 
     this.ctx.textAlign = 'right';
     this.ctx.fillStyle = '#aaa';
-    this.ctx.fillText(`Best: ${highScore}`, this.width - 16, 90);
+    this.ctx.fillText(`Best: ${highScore}`, this.width - this.s(16), this.s(90));
 
     // Pause button (two bars)
     this.drawPauseButton();
@@ -76,9 +85,9 @@ export class Renderer {
 
   private drawPauseButton(): void {
     const r = this.getPauseButtonRect();
-    const barW = 6;
-    const barH = 22;
-    const gap = 8;
+    const barW = this.s(6);
+    const barH = this.s(22);
+    const gap = this.s(8);
     const cx = r.x + r.w / 2;
     const cy = r.y + r.h / 2;
 
@@ -88,7 +97,7 @@ export class Renderer {
   }
 
   getPauseButtonRect(): { x: number; y: number; w: number; h: number } {
-    return { x: this.width - 56, y: 82, w: 44, h: 36 };
+    return { x: this.width - this.s(56), y: this.s(82), w: this.s(44), h: this.s(36) };
   }
 
   drawPauseScreen(): void {
@@ -103,20 +112,20 @@ export class Renderer {
     this.ctx.textBaseline = 'middle';
 
     // Large pause icon
-    const barW = 14;
-    const barH = 60;
-    const gap = 20;
+    const barW = this.s(14);
+    const barH = this.s(60);
+    const gap = this.s(20);
     this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-    this.ctx.fillRect(cx - gap / 2 - barW, cy - 80 - barH / 2, barW, barH);
-    this.ctx.fillRect(cx + gap / 2, cy - 80 - barH / 2, barW, barH);
+    this.ctx.fillRect(cx - gap / 2 - barW, cy - this.s(80) - barH / 2, barW, barH);
+    this.ctx.fillRect(cx + gap / 2, cy - this.s(80) - barH / 2, barW, barH);
 
     this.ctx.fillStyle = CONFIG.TEXT_COLOR;
-    this.ctx.font = 'bold 40px system-ui, sans-serif';
+    this.ctx.font = this.font(40, 'bold');
     this.ctx.fillText('Paused', cx, cy);
 
     this.ctx.fillStyle = '#54a0ff';
-    this.ctx.font = 'bold 28px system-ui, sans-serif';
-    this.ctx.fillText('Tap to Resume', cx, cy + 60);
+    this.ctx.font = this.font(28, 'bold');
+    this.ctx.fillText('Tap to Resume', cx, cy + this.s(60));
   }
 
   drawShapes(shapes: Shape[]): void {
@@ -130,26 +139,26 @@ export class Renderer {
 
     // Title
     this.ctx.fillStyle = '#feca57';
-    this.ctx.font = CONFIG.TITLE_FONT;
+    this.ctx.font = this.font(CONFIG.TITLE_FONT_SIZE, 'bold');
     this.ctx.textAlign = 'center';
     this.ctx.textBaseline = 'middle';
     this.ctx.fillText('MATHY', this.width / 2, this.height * 0.35);
 
     // Subtitle
     this.ctx.fillStyle = CONFIG.TEXT_COLOR;
-    this.ctx.font = CONFIG.SUBTITLE_FONT;
+    this.ctx.font = this.font(CONFIG.SUBTITLE_FONT_SIZE);
     this.ctx.fillText('Tap the right answer!', this.width / 2, this.height * 0.45);
 
     // Tap to start
     this.ctx.fillStyle = '#54a0ff';
-    this.ctx.font = 'bold 28px system-ui, sans-serif';
+    this.ctx.font = this.font(28, 'bold');
     this.ctx.fillText('Tap to Start', this.width / 2, this.height * 0.6);
   }
 
   drawCountdown(count: number): void {
     this.clear();
     this.ctx.fillStyle = '#feca57';
-    this.ctx.font = 'bold 96px system-ui, sans-serif';
+    this.ctx.font = this.font(96, 'bold');
     this.ctx.textAlign = 'center';
     this.ctx.textBaseline = 'middle';
     this.ctx.fillText(String(count), this.width / 2, this.height / 2);
@@ -167,26 +176,26 @@ export class Renderer {
     this.ctx.textBaseline = 'middle';
 
     this.ctx.fillStyle = '#ff6b6b';
-    this.ctx.font = 'bold 48px system-ui, sans-serif';
-    this.ctx.fillText('Game Over', cx, cy - 80);
+    this.ctx.font = this.font(48, 'bold');
+    this.ctx.fillText('Game Over', cx, cy - this.s(80));
 
     this.ctx.fillStyle = CONFIG.TEXT_COLOR;
-    this.ctx.font = 'bold 32px system-ui, sans-serif';
-    this.ctx.fillText(`Score: ${score}`, cx, cy - 20);
+    this.ctx.font = this.font(32, 'bold');
+    this.ctx.fillText(`Score: ${score}`, cx, cy - this.s(20));
 
     if (isNewBest) {
       this.ctx.fillStyle = '#feca57';
-      this.ctx.font = 'bold 26px system-ui, sans-serif';
-      this.ctx.fillText('🎉 New High Score! 🎉', cx, cy + 25);
+      this.ctx.font = this.font(26, 'bold');
+      this.ctx.fillText('🎉 New High Score! 🎉', cx, cy + this.s(25));
     } else {
       this.ctx.fillStyle = '#aaa';
-      this.ctx.font = '24px system-ui, sans-serif';
-      this.ctx.fillText(`Best: ${highScore}`, cx, cy + 25);
+      this.ctx.font = this.font(24);
+      this.ctx.fillText(`Best: ${highScore}`, cx, cy + this.s(25));
     }
 
     this.ctx.fillStyle = '#54a0ff';
-    this.ctx.font = 'bold 28px system-ui, sans-serif';
-    this.ctx.fillText('Tap to Continue', cx, cy + 90);
+    this.ctx.font = this.font(28, 'bold');
+    this.ctx.fillText('Tap to Continue', cx, cy + this.s(90));
   }
 
   // --- User profile screens ---
@@ -197,19 +206,20 @@ export class Renderer {
 
     // Title
     this.ctx.fillStyle = '#feca57';
-    this.ctx.font = CONFIG.TITLE_FONT;
+    this.ctx.font = this.font(CONFIG.TITLE_FONT_SIZE, 'bold');
     this.ctx.textAlign = 'center';
     this.ctx.textBaseline = 'middle';
-    this.ctx.fillText('MATHY', cx, 60);
+    this.ctx.fillText('MATHY', cx, this.s(60));
 
     this.ctx.fillStyle = CONFIG.TEXT_COLOR;
-    this.ctx.font = CONFIG.SUBTITLE_FONT;
-    this.ctx.fillText('Choose Player', cx, 110);
+    this.ctx.font = this.font(CONFIG.SUBTITLE_FONT_SIZE);
+    this.ctx.fillText('Choose Player', cx, this.s(110));
 
     // User list
-    const startY = 160;
-    const rowH = 60;
-    const btnW = Math.min(360, this.width * 0.8);
+    const startY = this.s(160);
+    const rowH = this.s(60);
+    const btnW = Math.min(this.s(360), this.width * 0.8);
+    const btnH = this.s(48);
 
     for (let i = 0; i < users.length; i++) {
       const y = startY + i * rowH;
@@ -218,49 +228,49 @@ export class Renderer {
       // User button background
       this.ctx.fillStyle = '#16213e';
       this.ctx.beginPath();
-      this.ctx.roundRect(btnX, y, btnW, 48, 10);
+      this.ctx.roundRect(btnX, y, btnW, btnH, this.s(10));
       this.ctx.fill();
 
       // User name
       this.ctx.fillStyle = CONFIG.TEXT_COLOR;
-      this.ctx.font = 'bold 22px system-ui, sans-serif';
+      this.ctx.font = this.font(22, 'bold');
       this.ctx.textAlign = 'left';
-      this.ctx.fillText(users[i].name, btnX + 16, y + 25);
+      this.ctx.fillText(users[i].name, btnX + this.s(16), y + this.s(25));
 
       // High score
       this.ctx.fillStyle = '#aaa';
-      this.ctx.font = '18px system-ui, sans-serif';
+      this.ctx.font = this.font(18);
       this.ctx.textAlign = 'right';
-      const scoreX = deleteMode ? btnX + btnW - 52 : btnX + btnW - 16;
-      this.ctx.fillText(`Best: ${users[i].highScore}`, scoreX, y + 25);
+      const scoreX = deleteMode ? btnX + btnW - this.s(52) : btnX + btnW - this.s(16);
+      this.ctx.fillText(`Best: ${users[i].highScore}`, scoreX, y + this.s(25));
 
       // Delete icon (trash) when in delete mode
       if (deleteMode) {
         this.ctx.fillStyle = '#ff6b6b';
-        this.ctx.font = '22px system-ui, sans-serif';
+        this.ctx.font = this.font(22);
         this.ctx.textAlign = 'center';
-        this.ctx.fillText('✕', btnX + btnW - 24, y + 25);
+        this.ctx.fillText('✕', btnX + btnW - this.s(24), y + this.s(25));
       }
     }
 
     // "New User" button
-    const newY = startY + users.length * rowH + 10;
+    const newY = startY + users.length * rowH + this.s(10);
     this.ctx.fillStyle = '#54a0ff';
     this.ctx.beginPath();
-    this.ctx.roundRect(cx - btnW / 2, newY, btnW, 48, 10);
+    this.ctx.roundRect(cx - btnW / 2, newY, btnW, btnH, this.s(10));
     this.ctx.fill();
 
     this.ctx.fillStyle = '#fff';
-    this.ctx.font = 'bold 22px system-ui, sans-serif';
+    this.ctx.font = this.font(22, 'bold');
     this.ctx.textAlign = 'center';
-    this.ctx.fillText('+ New Player', cx, newY + 25);
+    this.ctx.fillText('+ New Player', cx, newY + this.s(25));
 
     // Delete mode toggle (only if users exist)
     if (users.length > 0) {
       const layout = this.getUserSelectLayout(users.length);
       const tr = layout.deleteToggle;
       this.ctx.fillStyle = deleteMode ? '#ff6b6b' : '#555';
-      this.ctx.font = '18px system-ui, sans-serif';
+      this.ctx.font = this.font(18);
       this.ctx.textAlign = 'center';
       this.ctx.fillText(
         deleteMode ? 'Done Deleting' : 'Delete a Player',
@@ -277,26 +287,27 @@ export class Renderer {
     deleteIcons: { x: number; y: number; w: number; h: number }[];
   } {
     const cx = this.width / 2;
-    const startY = 160;
-    const rowH = 60;
-    const btnW = Math.min(360, this.width * 0.8);
+    const startY = this.s(160);
+    const rowH = this.s(60);
+    const btnW = Math.min(this.s(360), this.width * 0.8);
+    const btnH = this.s(48);
     const btnX = cx - btnW / 2;
 
     const userButtons = [];
     const deleteIcons = [];
     for (let i = 0; i < userCount; i++) {
       const y = startY + i * rowH;
-      userButtons.push({ x: btnX, y, w: btnW, h: 48 });
-      deleteIcons.push({ x: btnX + btnW - 48, y, w: 48, h: 48 });
+      userButtons.push({ x: btnX, y, w: btnW, h: btnH });
+      deleteIcons.push({ x: btnX + btnW - this.s(48), y, w: this.s(48), h: btnH });
     }
 
-    const newY = startY + userCount * rowH + 10;
-    const toggleY = newY + 55;
+    const newY = startY + userCount * rowH + this.s(10);
+    const toggleY = newY + this.s(55);
 
     return {
       userButtons,
-      newUserButton: { x: btnX, y: newY, w: btnW, h: 48 },
-      deleteToggle: { x: btnX, y: toggleY, w: btnW, h: 30 },
+      newUserButton: { x: btnX, y: newY, w: btnW, h: btnH },
+      deleteToggle: { x: btnX, y: toggleY, w: btnW, h: this.s(30) },
       deleteIcons,
     };
   }
@@ -307,21 +318,21 @@ export class Renderer {
 
     // Prompt
     this.ctx.fillStyle = CONFIG.TEXT_COLOR;
-    this.ctx.font = CONFIG.SUBTITLE_FONT;
+    this.ctx.font = this.font(CONFIG.SUBTITLE_FONT_SIZE);
     this.ctx.textAlign = 'center';
     this.ctx.textBaseline = 'middle';
-    this.ctx.fillText('Enter Your Name', cx, 50);
+    this.ctx.fillText('Enter Your Name', cx, this.s(50));
 
     // Name display
     const displayName = currentName || '_';
     this.ctx.fillStyle = '#feca57';
-    this.ctx.font = 'bold 40px system-ui, sans-serif';
-    this.ctx.fillText(displayName, cx, 110);
+    this.ctx.font = this.font(40, 'bold');
+    this.ctx.fillText(displayName, cx, this.s(110));
 
     // Character count
     this.ctx.fillStyle = '#555';
-    this.ctx.font = '16px system-ui, sans-serif';
-    this.ctx.fillText(`${currentName.length}/${CONFIG.MAX_USERNAME_LENGTH}`, cx, 145);
+    this.ctx.font = this.font(16);
+    this.ctx.fillText(`${currentName.length}/${CONFIG.MAX_USERNAME_LENGTH}`, cx, this.s(145));
 
     // Draw keypad
     const layout = this.getKeypadLayout();
@@ -332,11 +343,11 @@ export class Renderer {
 
       this.ctx.fillStyle = isDisabled ? '#222' : isOk ? '#54a0ff' : '#16213e';
       this.ctx.beginPath();
-      this.ctx.roundRect(key.x, key.y, key.w, key.h, 6);
+      this.ctx.roundRect(key.x, key.y, key.w, key.h, this.s(6));
       this.ctx.fill();
 
       this.ctx.fillStyle = isDisabled ? '#555' : isSpecial ? '#fff' : CONFIG.TEXT_COLOR;
-      this.ctx.font = isSpecial ? 'bold 20px system-ui, sans-serif' : '20px system-ui, sans-serif';
+      this.ctx.font = isSpecial ? this.font(20, 'bold') : this.font(20);
       this.ctx.textAlign = 'center';
       this.ctx.textBaseline = 'middle';
       this.ctx.fillText(key.label, key.x + key.w / 2, key.y + key.h / 2);
@@ -345,10 +356,10 @@ export class Renderer {
 
   getKeypadLayout(): { label: string; x: number; y: number; w: number; h: number }[] {
     const rows = CONFIG.KEYPAD_ROWS;
-    const keyW = 42;
-    const keyH = 42;
-    const gap = 6;
-    const startY = 175;
+    const keyW = this.s(42);
+    const keyH = this.s(42);
+    const gap = this.s(6);
+    const startY = this.s(175);
     const cx = this.width / 2;
 
     const keys: { label: string; x: number; y: number; w: number; h: number }[] = [];
@@ -357,7 +368,7 @@ export class Renderer {
       const row = rows[r];
       const widths = row.map((label) => {
         if (label === 'OK') return keyW * 2 + gap;
-        if (label === '⌫') return keyW * 1.5;
+        if (label === '⌫') return Math.round(keyW * 1.5);
         return keyW;
       });
       const rowWidth = widths.reduce((sum, w) => sum + w, 0) + (row.length - 1) * gap;
@@ -384,20 +395,20 @@ export class Renderer {
 
     // Warning icon
     this.ctx.fillStyle = '#ff6b6b';
-    this.ctx.font = 'bold 48px system-ui, sans-serif';
-    this.ctx.fillText(isFinal ? '⚠️' : '🗑️', cx, cy - 100);
+    this.ctx.font = this.font(48, 'bold');
+    this.ctx.fillText(isFinal ? '⚠️' : '🗑️', cx, cy - this.s(100));
 
     // Message
     this.ctx.fillStyle = CONFIG.TEXT_COLOR;
-    this.ctx.font = 'bold 28px system-ui, sans-serif';
+    this.ctx.font = this.font(28, 'bold');
     this.ctx.fillText(
       isFinal ? 'Are you sure?' : `Delete ${userName}?`,
       cx,
-      cy - 40,
+      cy - this.s(40),
     );
 
     this.ctx.fillStyle = '#aaa';
-    this.ctx.font = '20px system-ui, sans-serif';
+    this.ctx.font = this.font(20);
     this.ctx.fillText(
       isFinal
         ? 'This will remove all scores and data.'
@@ -407,26 +418,26 @@ export class Renderer {
     );
 
     // Yes / No buttons
-    const btnW = 140;
-    const btnH = 50;
-    const gap = 20;
+    const btnW = this.s(140);
+    const btnH = this.s(50);
+    const gap = this.s(20);
 
     // No button
     this.ctx.fillStyle = '#16213e';
     this.ctx.beginPath();
-    this.ctx.roundRect(cx - btnW - gap / 2, cy + 40, btnW, btnH, 10);
+    this.ctx.roundRect(cx - btnW - gap / 2, cy + this.s(40), btnW, btnH, this.s(10));
     this.ctx.fill();
     this.ctx.fillStyle = CONFIG.TEXT_COLOR;
-    this.ctx.font = 'bold 24px system-ui, sans-serif';
-    this.ctx.fillText('Cancel', cx - btnW / 2 - gap / 2, cy + 65);
+    this.ctx.font = this.font(24, 'bold');
+    this.ctx.fillText('Cancel', cx - btnW / 2 - gap / 2, cy + this.s(65));
 
     // Yes button
     this.ctx.fillStyle = '#ff6b6b';
     this.ctx.beginPath();
-    this.ctx.roundRect(cx + gap / 2, cy + 40, btnW, btnH, 10);
+    this.ctx.roundRect(cx + gap / 2, cy + this.s(40), btnW, btnH, this.s(10));
     this.ctx.fill();
     this.ctx.fillStyle = '#fff';
-    this.ctx.fillText('Delete', cx + btnW / 2 + gap / 2, cy + 65);
+    this.ctx.fillText('Delete', cx + btnW / 2 + gap / 2, cy + this.s(65));
   }
 
   getDeleteConfirmLayout(): {
@@ -435,12 +446,12 @@ export class Renderer {
   } {
     const cx = this.width / 2;
     const cy = this.height / 2;
-    const btnW = 140;
-    const btnH = 50;
-    const gap = 20;
+    const btnW = this.s(140);
+    const btnH = this.s(50);
+    const gap = this.s(20);
     return {
-      cancelBtn: { x: cx - btnW - gap / 2, y: cy + 40, w: btnW, h: btnH },
-      deleteBtn: { x: cx + gap / 2, y: cy + 40, w: btnW, h: btnH },
+      cancelBtn: { x: cx - btnW - gap / 2, y: cy + this.s(40), w: btnW, h: btnH },
+      deleteBtn: { x: cx + gap / 2, y: cy + this.s(40), w: btnW, h: btnH },
     };
   }
 
@@ -466,8 +477,8 @@ export class Renderer {
     this.ctx.textBaseline = 'middle';
 
     this.ctx.fillStyle = CONFIG.TEXT_COLOR;
-    this.ctx.font = CONFIG.SUBTITLE_FONT;
-    this.ctx.fillText('Choose Operations', cx, 50);
+    this.ctx.font = this.font(CONFIG.SUBTITLE_FONT_SIZE);
+    this.ctx.fillText('Choose Operations', cx, this.s(50));
 
     const layout = this.getOpSelectLayout();
     for (let i = 0; i < allOps.length; i++) {
@@ -483,39 +494,39 @@ export class Renderer {
         this.ctx.fillStyle = '#16213e';
         // Selected border
         this.ctx.strokeStyle = '#54a0ff';
-        this.ctx.lineWidth = 3;
+        this.ctx.lineWidth = this.s(3);
         this.ctx.beginPath();
-        this.ctx.roundRect(btn.x, btn.y, btn.w, btn.h, 12);
+        this.ctx.roundRect(btn.x, btn.y, btn.w, btn.h, this.s(12));
         this.ctx.stroke();
       } else {
         this.ctx.fillStyle = '#16213e';
       }
       this.ctx.beginPath();
-      this.ctx.roundRect(btn.x, btn.y, btn.w, btn.h, 12);
+      this.ctx.roundRect(btn.x, btn.y, btn.w, btn.h, this.s(12));
       this.ctx.fill();
 
       // Op symbol
       this.ctx.fillStyle = isUnlocked ? '#feca57' : '#555';
-      this.ctx.font = 'bold 36px system-ui, sans-serif';
-      this.ctx.fillText(op, btn.x + btn.w / 2, btn.y + 30);
+      this.ctx.font = this.font(36, 'bold');
+      this.ctx.fillText(op, btn.x + btn.w / 2, btn.y + this.s(30));
 
       // Label
       this.ctx.fillStyle = isUnlocked ? CONFIG.TEXT_COLOR : '#444';
-      this.ctx.font = '16px system-ui, sans-serif';
-      this.ctx.fillText(Renderer.OP_LABELS[op] ?? op, btn.x + btn.w / 2, btn.y + 58);
+      this.ctx.font = this.font(16);
+      this.ctx.fillText(Renderer.OP_LABELS[op] ?? op, btn.x + btn.w / 2, btn.y + this.s(58));
 
       if (isUnlocked) {
         // Best score
         const best = opBestScores[op] ?? 0;
         this.ctx.fillStyle = '#aaa';
-        this.ctx.font = '14px system-ui, sans-serif';
-        this.ctx.fillText(`Best: ${best}`, btn.x + btn.w / 2, btn.y + 78);
+        this.ctx.font = this.font(14);
+        this.ctx.fillText(`Best: ${best}`, btn.x + btn.w / 2, btn.y + this.s(78));
 
         // Checkmark for selected
         if (isSelected) {
           this.ctx.fillStyle = '#54a0ff';
-          this.ctx.font = 'bold 20px system-ui, sans-serif';
-          this.ctx.fillText('✓', btn.x + btn.w - 20, btn.y + 16);
+          this.ctx.font = this.font(20, 'bold');
+          this.ctx.fillText('✓', btn.x + btn.w - this.s(20), btn.y + this.s(16));
         }
       } else {
         const prerequisiteOp = i > 0 ? allOps[i - 1] : undefined;
@@ -523,10 +534,10 @@ export class Renderer {
           ? `Score ${CONFIG.UNLOCK_THRESHOLD} on ${prerequisiteOp}`
           : `Score ${CONFIG.UNLOCK_THRESHOLD}`;
         this.ctx.fillStyle = '#555';
-        this.ctx.font = '20px system-ui, sans-serif';
-        this.ctx.fillText('🔒', btn.x + btn.w / 2, btn.y + 78);
-        this.ctx.font = '12px system-ui, sans-serif';
-        this.ctx.fillText(unlockText, btn.x + btn.w / 2, btn.y + 96);
+        this.ctx.font = this.font(20);
+        this.ctx.fillText('🔒', btn.x + btn.w / 2, btn.y + this.s(78));
+        this.ctx.font = this.font(12);
+        this.ctx.fillText(unlockText, btn.x + btn.w / 2, btn.y + this.s(96));
       }
     }
 
@@ -535,11 +546,11 @@ export class Renderer {
     const hasSelection = selectedOps.length > 0;
     this.ctx.fillStyle = hasSelection ? '#54a0ff' : '#222';
     this.ctx.beginPath();
-    this.ctx.roundRect(playBtn.x, playBtn.y, playBtn.w, playBtn.h, 10);
+    this.ctx.roundRect(playBtn.x, playBtn.y, playBtn.w, playBtn.h, this.s(10));
     this.ctx.fill();
 
     this.ctx.fillStyle = hasSelection ? '#fff' : '#555';
-    this.ctx.font = 'bold 26px system-ui, sans-serif';
+    this.ctx.font = this.font(26, 'bold');
     this.ctx.fillText('Play!', cx, playBtn.y + playBtn.h / 2);
   }
 
@@ -548,10 +559,10 @@ export class Renderer {
     playButton: { x: number; y: number; w: number; h: number };
   } {
     const cx = this.width / 2;
-    const btnW = Math.min(160, this.width * 0.4);
-    const btnH = 110;
-    const gap = 12;
-    const startY = 90;
+    const btnW = Math.min(this.s(160), this.width * 0.4);
+    const btnH = this.s(110);
+    const gap = this.s(12);
+    const startY = this.s(90);
 
     const opButtons = [];
     for (let i = 0; i < 4; i++) {
@@ -562,12 +573,13 @@ export class Renderer {
       opButtons.push({ x, y, w: btnW, h: btnH });
     }
 
-    const playBtnW = Math.min(300, this.width * 0.7);
-    const playY = startY + 2 * (btnH + gap) + 20;
+    const playBtnW = Math.min(this.s(300), this.width * 0.7);
+    const playBtnH = this.s(50);
+    const playY = startY + 2 * (btnH + gap) + this.s(20);
 
     return {
       opButtons,
-      playButton: { x: cx - playBtnW / 2, y: playY, w: playBtnW, h: 50 },
+      playButton: { x: cx - playBtnW / 2, y: playY, w: playBtnW, h: playBtnH },
     };
   }
 
@@ -590,18 +602,18 @@ export class Renderer {
     this.ctx.textBaseline = 'middle';
 
     // Big emoji
-    this.ctx.font = '72px system-ui, sans-serif';
-    this.ctx.fillText('🎉', 0, -70);
+    this.ctx.font = this.font(72);
+    this.ctx.fillText('🎉', 0, -this.s(70));
 
     // Unlock message
     this.ctx.fillStyle = '#feca57';
-    this.ctx.font = 'bold 36px system-ui, sans-serif';
+    this.ctx.font = this.font(36, 'bold');
     const opName = Renderer.OP_LABELS[unlockedOp] ?? unlockedOp;
-    this.ctx.fillText(`${opName}`, 0, -5);
+    this.ctx.fillText(`${opName}`, 0, -this.s(5));
 
     this.ctx.fillStyle = '#54a0ff';
-    this.ctx.font = 'bold 28px system-ui, sans-serif';
-    this.ctx.fillText('Unlocked!', 0, 35);
+    this.ctx.font = this.font(28, 'bold');
+    this.ctx.fillText('Unlocked!', 0, this.s(35));
 
     this.ctx.restore();
   }
@@ -610,7 +622,7 @@ export class Renderer {
   spawnParticles(x: number, y: number, color: string, count = 12): void {
     for (let i = 0; i < count; i++) {
       const angle = (Math.PI * 2 * i) / count + Math.random() * 0.3;
-      const speed = 100 + Math.random() * 200;
+      const speed = this.s(100) + Math.random() * this.s(200);
       this.particles.push({
         x, y,
         vx: Math.cos(angle) * speed,
@@ -618,7 +630,7 @@ export class Renderer {
         life: 1,
         maxLife: 0.5 + Math.random() * 0.3,
         color,
-        size: 3 + Math.random() * 5,
+        size: this.s(3) + Math.random() * this.s(5),
       });
     }
   }
@@ -628,7 +640,7 @@ export class Renderer {
       const p = this.particles[i];
       p.x += p.vx * dt;
       p.y += p.vy * dt;
-      p.vy += 300 * dt; // gravity
+      p.vy += this.s(300) * dt; // gravity
       p.life -= dt / p.maxLife;
       if (p.life <= 0) {
         this.particles.splice(i, 1);
