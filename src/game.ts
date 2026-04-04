@@ -5,16 +5,28 @@ import { Renderer } from './renderer';
 import { InputHandler } from './input';
 import { AudioManager } from './audio';
 import { ScoreManager } from './score';
+import { UserStore, UserProfile } from './user';
 
-type GameState = 'start' | 'countdown' | 'playing' | 'new-question' | 'game-over';
+type GameState =
+  | 'user-select'
+  | 'name-entry'
+  | 'confirm-delete'
+  | 'confirm-delete-final'
+  | 'start'
+  | 'countdown'
+  | 'playing'
+  | 'new-question'
+  | 'game-over';
 
 export class Game {
   private renderer: Renderer;
   private input: InputHandler;
   private audio = new AudioManager();
-  private scoreManager = new ScoreManager();
+  private userStore = new UserStore();
+  private scoreManager!: ScoreManager;
+  private currentUser: UserProfile | null = null;
 
-  private state: GameState = 'start';
+  private state: GameState = 'user-select';
   private paused = false;
   private question: Question | null = null;
   private shapes: Shape[] = [];
@@ -22,6 +34,11 @@ export class Game {
   private countdownValue = CONFIG.COUNTDOWN_SECONDS;
   private countdownTimer = 0;
   private newQuestionTimer = 0;
+
+  // User input state
+  private nameInput = '';
+  private deleteMode = false;
+  private deleteTarget: UserProfile | null = null;
 
   private lastTime = 0;
 
@@ -102,6 +119,22 @@ export class Game {
 
   private render(): void {
     switch (this.state) {
+      case 'user-select':
+        this.renderer.drawUserSelect(this.userStore.list(), this.deleteMode);
+        break;
+
+      case 'name-entry':
+        this.renderer.drawNameEntry(this.nameInput);
+        break;
+
+      case 'confirm-delete':
+        this.renderer.drawDeleteConfirm(this.deleteTarget?.name ?? '', false);
+        break;
+
+      case 'confirm-delete-final':
+        this.renderer.drawDeleteConfirm(this.deleteTarget?.name ?? '', true);
+        break;
+
       case 'start':
         this.renderer.drawStartScreen();
         break;
@@ -152,6 +185,19 @@ export class Game {
 
   private handleTap(x: number, y: number): void {
     switch (this.state) {
+      case 'user-select':
+        this.handleUserSelectTap(x, y);
+        break;
+
+      case 'name-entry':
+        this.handleNameEntryTap(x, y);
+        break;
+
+      case 'confirm-delete':
+      case 'confirm-delete-final':
+        this.handleDeleteConfirmTap(x, y);
+        break;
+
       case 'start':
         this.startCountdown();
         break;
@@ -175,6 +221,108 @@ export class Game {
         this.restartGame();
         break;
     }
+  }
+
+  private handleUserSelectTap(x: number, y: number): void {
+    const users = this.userStore.list();
+    const layout = this.renderer.getUserSelectLayout(users.length);
+
+    // Check delete toggle
+    if (users.length > 0 && this.hitTest(x, y, layout.deleteToggle)) {
+      this.deleteMode = !this.deleteMode;
+      return;
+    }
+
+    // Check user buttons
+    for (let i = 0; i < users.length; i++) {
+      if (this.hitTest(x, y, layout.userButtons[i])) {
+        if (this.deleteMode && this.hitTest(x, y, layout.deleteIcons[i])) {
+          this.deleteTarget = users[i];
+          this.state = 'confirm-delete';
+        } else if (!this.deleteMode) {
+          this.selectUser(users[i]);
+        }
+        return;
+      }
+    }
+
+    // Check "New User" button
+    if (this.hitTest(x, y, layout.newUserButton)) {
+      this.nameInput = '';
+      this.deleteMode = false;
+      this.state = 'name-entry';
+    }
+  }
+
+  private handleNameEntryTap(x: number, y: number): void {
+    const keys = this.renderer.getKeypadLayout();
+    for (const key of keys) {
+      if (x >= key.x && x <= key.x + key.w && y >= key.y && y <= key.y + key.h) {
+        if (key.label === '⌫') {
+          this.nameInput = this.nameInput.slice(0, -1);
+        } else if (key.label === 'OK') {
+          if (this.nameInput.length > 0) {
+            this.finishNameEntry();
+          }
+        } else if (this.nameInput.length < CONFIG.MAX_USERNAME_LENGTH) {
+          this.nameInput += key.label;
+        }
+        return;
+      }
+    }
+  }
+
+  private finishNameEntry(): void {
+    const name = this.nameInput.trim().toUpperCase();
+    if (!name) return;
+
+    const existing = this.userStore.get(name);
+    if (existing) {
+      this.selectUser(existing);
+    } else {
+      try {
+        const profile = this.userStore.create(name);
+        this.selectUser(profile);
+      } catch {
+        // Name conflict after normalization — just go back
+        this.state = 'user-select';
+      }
+    }
+  }
+
+  private handleDeleteConfirmTap(x: number, y: number): void {
+    const layout = this.renderer.getDeleteConfirmLayout();
+
+    if (this.hitTest(x, y, layout.cancelBtn)) {
+      this.deleteTarget = null;
+      this.state = 'user-select';
+    } else if (this.hitTest(x, y, layout.deleteBtn)) {
+      if (this.state === 'confirm-delete') {
+        this.state = 'confirm-delete-final';
+      } else {
+        // Final confirmation — delete the user
+        if (this.deleteTarget) {
+          this.userStore.delete(this.deleteTarget.name);
+          this.deleteTarget = null;
+        }
+        this.deleteMode = false;
+        this.state = 'user-select';
+      }
+    }
+  }
+
+  private selectUser(profile: UserProfile): void {
+    this.currentUser = profile;
+    this.scoreManager = new ScoreManager(this.userStore, profile);
+    this.state = 'start';
+  }
+
+  private hitTest(
+    x: number,
+    y: number,
+    rect: { x: number; y: number; w: number; h: number },
+  ): boolean {
+    return x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h;
   }
 
   private startCountdown(): void {
@@ -230,6 +378,7 @@ export class Game {
   }
 
   private restartGame(): void {
-    this.startCountdown();
+    this.state = 'user-select';
+    this.deleteMode = false;
   }
 }

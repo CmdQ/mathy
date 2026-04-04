@@ -1,13 +1,18 @@
 import { CONFIG } from './config';
+import { UserProfile, UserStore } from './user';
 
 export class ScoreManager {
   score = 0;
   highScore: number;
   level = 1;
   private prevLevel = 1;
+  private userStore: UserStore;
+  private profile: UserProfile;
 
-  constructor() {
-    this.highScore = this.loadHighScore();
+  constructor(userStore: UserStore, profile: UserProfile) {
+    this.userStore = userStore;
+    this.profile = profile;
+    this.highScore = profile.highScore;
   }
 
   addCorrect(): boolean {
@@ -31,11 +36,8 @@ export class ScoreManager {
   saveHighScore(): void {
     if (this.score > this.highScore) {
       this.highScore = this.score;
-      try {
-        localStorage.setItem('mathy-high-score', String(this.highScore));
-      } catch {
-        // localStorage may not be available
-      }
+      this.profile.highScore = this.score;
+      this.userStore.save(this.profile);
     }
   }
 
@@ -43,13 +45,5 @@ export class ScoreManager {
     this.score = 0;
     this.level = 1;
     this.prevLevel = 1;
-  }
-
-  private loadHighScore(): number {
-    try {
-      return parseInt(localStorage.getItem('mathy-high-score') || '0', 10) || 0;
-    } catch {
-      return 0;
-    }
   }
 }

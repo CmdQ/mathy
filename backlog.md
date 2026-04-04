@@ -2,8 +2,7 @@
 
 ## ~~Update README~~ ✅
 
-## User Profiles
-Add a name entry screen on first launch. Store the chosen name in localStorage. Display the player name on the HUD and game-over screen. Support switching profiles.
+## ~~User Profiles~~ ✅
 
 ## Operation Unlock System
 Let players choose which math operations to practice (+, −, ×, ÷). Start with only addition unlocked. Reaching a score threshold on an operation unlocks the next harder one (+ → − → × → ÷). Show lock/unlock state on an operation select screen before starting a game.

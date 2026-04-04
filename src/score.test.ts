@@ -1,17 +1,24 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ScoreManager } from './score';
+import { UserStore } from './user';
 
-// Mock localStorage
 const localStorageMock = (() => {
   let store: Record<string, string> = {};
   return {
     getItem: (key: string) => store[key] ?? null,
     setItem: (key: string, value: string) => { store[key] = value; },
+    removeItem: (key: string) => { delete store[key]; },
     clear: () => { store = {}; },
   };
 })();
 
 vi.stubGlobal('localStorage', localStorageMock);
+
+function makeScoreManager(): ScoreManager {
+  const userStore = new UserStore();
+  const profile = userStore.create('TEST');
+  return new ScoreManager(userStore, profile);
+}
 
 describe('ScoreManager', () => {
   beforeEach(() => {
@@ -19,32 +26,32 @@ describe('ScoreManager', () => {
   });
 
   it('starts with score 0 and level 1', () => {
-    const sm = new ScoreManager();
+    const sm = makeScoreManager();
     expect(sm.score).toBe(0);
     expect(sm.level).toBe(1);
   });
 
   it('adds 3 points for correct answer', () => {
-    const sm = new ScoreManager();
+    const sm = makeScoreManager();
     sm.addCorrect();
     expect(sm.score).toBe(3);
   });
 
   it('subtracts 1 point for wrong answer', () => {
-    const sm = new ScoreManager();
+    const sm = makeScoreManager();
     sm.addCorrect(); // score = 3
     sm.addWrong();   // score = 2
     expect(sm.score).toBe(2);
   });
 
   it('does not go below 0', () => {
-    const sm = new ScoreManager();
+    const sm = makeScoreManager();
     sm.addWrong();
     expect(sm.score).toBe(0);
   });
 
   it('levels up at 20 point threshold', () => {
-    const sm = new ScoreManager();
+    const sm = makeScoreManager();
     let leveledUp = false;
     // 7 correct = 21 points → level 2
     for (let i = 0; i < 7; i++) {
@@ -56,12 +63,12 @@ describe('ScoreManager', () => {
   });
 
   it('returns false when no level change', () => {
-    const sm = new ScoreManager();
+    const sm = makeScoreManager();
     expect(sm.addCorrect()).toBe(false); // score 3, still level 1
   });
 
   it('increases fall speed with level', () => {
-    const sm = new ScoreManager();
+    const sm = makeScoreManager();
     const speed1 = sm.getFallSpeed();
     // Get to level 2
     for (let i = 0; i < 7; i++) sm.addCorrect();
@@ -70,32 +77,35 @@ describe('ScoreManager', () => {
   });
 
   it('resets score and level', () => {
-    const sm = new ScoreManager();
+    const sm = makeScoreManager();
     for (let i = 0; i < 10; i++) sm.addCorrect();
     sm.reset();
     expect(sm.score).toBe(0);
     expect(sm.level).toBe(1);
   });
 
-  it('saves and loads high score', () => {
-    const sm1 = new ScoreManager();
-    for (let i = 0; i < 5; i++) sm1.addCorrect(); // score = 15
-    sm1.saveHighScore();
+  it('saves high score to user profile', () => {
+    const userStore = new UserStore();
+    const profile = userStore.create('SCORER');
+    const sm = new ScoreManager(userStore, profile);
+    for (let i = 0; i < 5; i++) sm.addCorrect(); // score = 15
+    sm.saveHighScore();
 
-    const sm2 = new ScoreManager();
-    expect(sm2.highScore).toBe(15);
+    const saved = userStore.get('SCORER');
+    expect(saved?.highScore).toBe(15);
   });
 
   it('does not overwrite a higher existing high score', () => {
-    const sm1 = new ScoreManager();
+    const userStore = new UserStore();
+    const profile = userStore.create('SCORER');
+    const sm1 = new ScoreManager(userStore, profile);
     for (let i = 0; i < 10; i++) sm1.addCorrect(); // score = 30
     sm1.saveHighScore();
 
-    const sm2 = new ScoreManager();
+    const sm2 = new ScoreManager(userStore, userStore.get('SCORER')!);
     for (let i = 0; i < 3; i++) sm2.addCorrect(); // score = 9
     sm2.saveHighScore();
 
-    const sm3 = new ScoreManager();
-    expect(sm3.highScore).toBe(30);
+    expect(userStore.get('SCORER')?.highScore).toBe(30);
   });
 });
