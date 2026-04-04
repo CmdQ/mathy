@@ -12,9 +12,8 @@ function randInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function generateProblem(): { a: number; b: number; op: Operation; answer: number } {
-  const ops: Operation[] = ['+', '−', '×', '÷'];
-  const op = ops[randInt(0, ops.length - 1)];
+function generateProblem(allowedOps: Operation[]): { a: number; b: number; op: Operation; answer: number } {
+  const op = allowedOps[randInt(0, allowedOps.length - 1)];
 
   switch (op) {
     case '+': {
@@ -70,8 +69,9 @@ function shuffle<T>(arr: T[]): T[] {
   return result;
 }
 
-export function createQuestion(): Question {
-  const { a, b, op, answer } = generateProblem();
+export function createQuestion(allowedOps?: Operation[]): Question {
+  const ops = allowedOps && allowedOps.length > 0 ? allowedOps : ['+' as Operation];
+  const { a, b, op, answer } = generateProblem(ops);
   const text = `${a} ${op} ${b}`;
   const wrongs = generateWrongAnswers(answer, CONFIG.WRONG_ANSWER_COUNT);
   const choices = shuffle([answer, ...wrongs]);

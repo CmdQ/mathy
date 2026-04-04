@@ -4,6 +4,7 @@ export interface UserProfile {
   name: string;
   highScore: number;
   unlockedOps: Operation[];
+  opBestScores: Partial<Record<Operation, number>>;
 }
 
 const STORAGE_KEY = 'mathy-users';
@@ -16,13 +17,13 @@ export class UserStore {
   }
 
   list(): UserProfile[] {
-    return this.profiles.map((p) => ({ ...p, unlockedOps: [...p.unlockedOps] }));
+    return this.profiles.map((p) => ({ ...p, unlockedOps: [...p.unlockedOps], opBestScores: { ...p.opBestScores } }));
   }
 
   get(name: string): UserProfile | undefined {
     const p = this.profiles.find((p) => p.name === name);
     if (!p) return undefined;
-    return { ...p, unlockedOps: [...p.unlockedOps] };
+    return { ...p, unlockedOps: [...p.unlockedOps], opBestScores: { ...p.opBestScores } };
   }
 
   create(name: string): UserProfile {
@@ -35,6 +36,7 @@ export class UserStore {
       name: trimmed,
       highScore: 0,
       unlockedOps: ['+'],
+      opBestScores: {},
     };
     this.profiles.push(profile);
     this.persist();
@@ -74,10 +76,20 @@ export class UserStore {
     const unlockedOps = Array.isArray(obj.unlockedOps)
       ? (obj.unlockedOps as unknown[]).filter((op): op is Operation => validOps.includes(op as Operation))
       : ['+' as Operation];
+    const opBestScores: Partial<Record<Operation, number>> = {};
+    if (obj.opBestScores && typeof obj.opBestScores === 'object') {
+      for (const op of validOps) {
+        const val = (obj.opBestScores as Record<string, unknown>)[op];
+        if (typeof val === 'number' && isFinite(val)) {
+          opBestScores[op] = Math.max(0, val);
+        }
+      }
+    }
     return {
       name,
       highScore: typeof obj.highScore === 'number' && isFinite(obj.highScore) ? Math.max(0, obj.highScore) : 0,
       unlockedOps: unlockedOps.length > 0 ? unlockedOps : ['+'],
+      opBestScores,
     };
   }
 

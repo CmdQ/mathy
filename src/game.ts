@@ -1,5 +1,5 @@
 import { CONFIG } from './config';
-import { createQuestion, Question } from './question';
+import { createQuestion, Operation, Question } from './question';
 import { Shape, spawnShapes } from './shape';
 import { Renderer } from './renderer';
 import { InputHandler } from './input';
@@ -12,10 +12,12 @@ type GameState =
   | 'name-entry'
   | 'confirm-delete'
   | 'confirm-delete-final'
+  | 'op-select'
   | 'start'
   | 'countdown'
   | 'playing'
   | 'new-question'
+  | 'celebration'
   | 'game-over';
 
 export class Game {
@@ -39,6 +41,13 @@ export class Game {
   private nameInput = '';
   private deleteMode = false;
   private deleteTarget: UserProfile | null = null;
+
+  // Operation select state
+  private selectedOps: Operation[] = ['+'];
+
+  // Celebration state
+  private celebrationOp: Operation | null = null;
+  private celebrationTimer = 0;
 
   private lastTime = 0;
 
@@ -90,6 +99,14 @@ export class Game {
           this.state = 'playing';
         }
         break;
+
+      case 'celebration':
+        this.celebrationTimer -= dt;
+        if (this.celebrationTimer <= 0) {
+          this.state = 'playing';
+          this.nextQuestion();
+        }
+        break;
     }
 
     this.renderer.updateParticles(dt);
@@ -135,6 +152,14 @@ export class Game {
         this.renderer.drawDeleteConfirm(this.deleteTarget?.name ?? '', true);
         break;
 
+      case 'op-select':
+        this.renderer.drawOpSelect(
+          this.currentUser?.unlockedOps ?? ['+'],
+          this.selectedOps,
+          this.currentUser?.opBestScores ?? {},
+        );
+        break;
+
       case 'start':
         this.renderer.drawStartScreen();
         break;
@@ -145,7 +170,8 @@ export class Game {
 
       case 'playing':
       case 'new-question':
-        if (this.paused) {
+      case 'celebration':
+        if (this.paused && this.state !== 'celebration') {
           this.renderer.drawPauseScreen();
         } else {
           this.renderer.clear();
@@ -159,6 +185,11 @@ export class Game {
           );
           this.renderer.drawShapes(this.shapes);
           this.renderer.drawParticles();
+          if (this.state === 'celebration' && this.celebrationOp) {
+            const duration = CONFIG.CELEBRATION_DURATION_MS / 1000;
+            const progress = 1 - this.celebrationTimer / duration;
+            this.renderer.drawCelebration(this.celebrationOp, progress);
+          }
         }
         break;
 
@@ -196,6 +227,10 @@ export class Game {
       case 'confirm-delete':
       case 'confirm-delete-final':
         this.handleDeleteConfirmTap(x, y);
+        break;
+
+      case 'op-select':
+        this.handleOpSelectTap(x, y);
         break;
 
       case 'start':
@@ -314,7 +349,8 @@ export class Game {
   private selectUser(profile: UserProfile): void {
     this.currentUser = profile;
     this.scoreManager = new ScoreManager(this.userStore, profile);
-    this.state = 'start';
+    this.selectedOps = profile.unlockedOps.length > 0 ? [profile.unlockedOps[0]] : ['+'];
+    this.state = 'op-select';
   }
 
   private hitTest(
@@ -323,6 +359,37 @@ export class Game {
     rect: { x: number; y: number; w: number; h: number },
   ): boolean {
     return x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h;
+  }
+
+  private handleOpSelectTap(x: number, y: number): void {
+    if (!this.currentUser) return;
+    const layout = this.renderer.getOpSelectLayout();
+    const allOps = CONFIG.OP_ORDER as readonly Operation[];
+
+    // Check op buttons
+    for (let i = 0; i < allOps.length; i++) {
+      if (this.hitTest(x, y, layout.opButtons[i])) {
+        const op = allOps[i];
+        if (!this.currentUser.unlockedOps.includes(op)) return; // locked
+
+        const idx = this.selectedOps.indexOf(op);
+        if (idx >= 0) {
+          // Deselect (but keep at least one)
+          if (this.selectedOps.length > 1) {
+            this.selectedOps.splice(idx, 1);
+          }
+        } else {
+          this.selectedOps.push(op);
+        }
+        return;
+      }
+    }
+
+    // Check play button
+    if (this.hitTest(x, y, layout.playButton) && this.selectedOps.length > 0) {
+      this.scoreManager.setActiveOps(this.selectedOps);
+      this.state = 'start';
+    }
   }
 
   private startCountdown(): void {
@@ -348,12 +415,28 @@ export class Game {
         if (leveledUp) {
           this.audio.levelUp();
         }
-        // Move to next question after delay
-        this.state = 'new-question';
-        this.newQuestionTimer = CONFIG.NEW_QUESTION_DELAY_MS / 1000;
-        // Fade out remaining shapes
-        for (const s of this.shapes) {
-          if (s !== shape) s.alive = false;
+
+        // Check for operation unlock
+        const unlock = this.scoreManager.checkUnlock();
+        if (unlock) {
+          // Refresh current user data
+          this.currentUser = this.userStore.get(this.currentUser!.name) ?? this.currentUser;
+          this.celebrationOp = unlock.unlocked;
+          this.celebrationTimer = CONFIG.CELEBRATION_DURATION_MS / 1000;
+          this.state = 'celebration';
+          this.audio.levelUp();
+          // Big particle burst
+          this.renderer.spawnParticles(this.renderer.getWidth() / 2, this.renderer.getHeight() / 2, '#feca57', 30);
+          // Fade out shapes
+          for (const s of this.shapes) s.alive = false;
+        } else {
+          // Move to next question after delay
+          this.state = 'new-question';
+          this.newQuestionTimer = CONFIG.NEW_QUESTION_DELAY_MS / 1000;
+          // Fade out remaining shapes
+          for (const s of this.shapes) {
+            if (s !== shape) s.alive = false;
+          }
         }
       } else {
         // Wrong!
@@ -366,7 +449,7 @@ export class Game {
   }
 
   private nextQuestion(): void {
-    this.question = createQuestion();
+    this.question = createQuestion(this.selectedOps);
     const speed = this.scoreManager.getFallSpeed();
     this.shapes = spawnShapes(this.question.choices, this.renderer.getWidth(), speed);
   }
@@ -378,7 +461,15 @@ export class Game {
   }
 
   private restartGame(): void {
-    this.state = 'user-select';
+    if (this.currentUser) {
+      // Refresh user data (may have new unlocks)
+      this.currentUser = this.userStore.get(this.currentUser.name) ?? this.currentUser;
+      this.scoreManager = new ScoreManager(this.userStore, this.currentUser);
+      this.selectedOps = this.currentUser.unlockedOps.length > 0 ? [this.currentUser.unlockedOps[0]] : ['+'];
+      this.state = 'op-select';
+    } else {
+      this.state = 'user-select';
+    }
     this.deleteMode = false;
   }
 }

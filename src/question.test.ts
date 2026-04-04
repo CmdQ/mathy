@@ -53,4 +53,28 @@ describe('createQuestion', () => {
       expect(q.text).toMatch(/^\d+ [+−×÷] \d+$/);
     }
   });
+
+  it('only generates addition when filtered to +', () => {
+    for (let i = 0; i < 30; i++) {
+      const q = createQuestion(['+']);
+      expect(q.text).toContain('+');
+    }
+  });
+
+  it('only generates multiplication when filtered to ×', () => {
+    for (let i = 0; i < 30; i++) {
+      const q = createQuestion(['×']);
+      expect(q.text).toContain('×');
+    }
+  });
+
+  it('generates from multiple allowed ops', () => {
+    const ops = new Set<string>();
+    for (let i = 0; i < 100; i++) {
+      const q = createQuestion(['+', '−']);
+      const match = q.text.match(/[+−]/);
+      if (match) ops.add(match[0]);
+    }
+    expect(ops.size).toBe(2);
+  });
 });
