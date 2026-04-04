@@ -433,7 +433,7 @@ export class Game {
         shape.triggerPop();
         this.renderer.spawnParticles(shape.x, shape.y, shape.color);
         const screenH = this.renderer.getHeight();
-        const heightRatio = Math.max(0, 1 - shape.y / screenH);
+        const heightRatio = Math.min(1, Math.max(0, 1 - shape.y / screenH));
         const bonus = Math.round(heightRatio * CONFIG.CORRECT_BONUS_MAX);
         const leveledUp = this.scoreManager.addCorrect(bonus);
         this.audio.correct();

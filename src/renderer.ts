@@ -56,11 +56,13 @@ export class Renderer {
 
   drawBackButton(): void {
     const r = this.getBackButtonRect();
+    this.ctx.save();
     this.ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
     this.ctx.font = this.font(24, 'bold');
     this.ctx.textAlign = 'center';
     this.ctx.textBaseline = 'middle';
     this.ctx.fillText('←', r.x + r.w / 2, r.y + r.h / 2);
+    this.ctx.restore();
   }
 
   getBackButtonRect(): { x: number; y: number; w: number; h: number } {

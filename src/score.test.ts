@@ -37,6 +37,12 @@ describe('ScoreManager', () => {
     expect(sm.score).toBe(3);
   });
 
+  it('adds bonus points when provided', () => {
+    const sm = makeScoreManager();
+    sm.addCorrect(2); // 3 base + 2 bonus = 5
+    expect(sm.score).toBe(5);
+  });
+
   it('subtracts 1 point for wrong answer', () => {
     const sm = makeScoreManager();
     sm.addCorrect(); // score = 3
