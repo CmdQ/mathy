@@ -20,14 +20,14 @@ export class Shape {
   shakeOffset = 0;
   popAnimation = 0;
 
-  constructor(x: number, y: number, answer: number, speed: number, scale = 1) {
+  constructor(x: number, y: number, answer: number, speed: number, uiScale = 1) {
     this.x = x;
     this.y = y - 60; // start above viewport
     this.answer = answer;
     this.speed = speed;
-    this.drawScale = scale;
+    this.drawScale = uiScale;
     this.radius = (CONFIG.SHAPE_MIN_RADIUS +
-      Math.random() * (CONFIG.SHAPE_MAX_RADIUS - CONFIG.SHAPE_MIN_RADIUS)) * scale;
+      Math.random() * (CONFIG.SHAPE_MAX_RADIUS - CONFIG.SHAPE_MIN_RADIUS)) * uiScale;
     this.type = SHAPE_TYPES[Math.floor(Math.random() * SHAPE_TYPES.length)];
     this.color = CONFIG.SHAPE_COLORS[Math.floor(Math.random() * CONFIG.SHAPE_COLORS.length)];
   }
@@ -119,7 +119,7 @@ export class Shape {
 
     // Draw answer label
     ctx.fillStyle = '#fff';
-    ctx.font = `bold ${Math.round(22 * this.drawScale)}px system-ui, sans-serif`;
+    ctx.font = `bold ${Math.round(CONFIG.SHAPE_LABEL_FONT_SIZE * this.drawScale)}px system-ui, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     const textY = this.type === 'triangle' ? 6 : 0;
@@ -144,7 +144,7 @@ export function spawnShapes(
   scale = 1,
 ): Shape[] {
   const count = answers.length;
-  const padding = CONFIG.SHAPE_PADDING + CONFIG.SHAPE_MAX_RADIUS;
+  const padding = (CONFIG.SHAPE_PADDING + CONFIG.SHAPE_MAX_RADIUS) * scale;
   const usableWidth = canvasWidth - padding * 2;
   const spacing = usableWidth / (count + 1);
 

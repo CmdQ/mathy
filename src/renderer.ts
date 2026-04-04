@@ -33,7 +33,8 @@ export class Renderer {
     this.height = window.innerHeight * dpr;
     this.canvas.width = this.width;
     this.canvas.height = this.height;
-    this._scale = Math.min(window.innerWidth, window.innerHeight) / 375;
+    // Scale based on CSS viewport, then multiply by DPR for canvas pixel space
+    this._scale = Math.min(window.innerWidth, window.innerHeight) / 375 * dpr;
   }
 
   getWidth(): number { return this.width; }
