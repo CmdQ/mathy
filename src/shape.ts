@@ -102,7 +102,7 @@ export class Shape {
           const angle = (Math.PI / 3) * i - Math.PI / 6;
           const hx = Math.cos(angle) * r;
           const hy = Math.sin(angle) * r;
-          i === 0 ? ctx.moveTo(hx, hy) : ctx.lineTo(hx, hy);
+          if (i === 0) { ctx.moveTo(hx, hy); } else { ctx.lineTo(hx, hy); }
         }
         ctx.closePath();
         break;
