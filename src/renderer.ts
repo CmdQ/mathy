@@ -14,16 +14,29 @@ interface Particle {
   size: number;
 }
 
+interface BgSymbol {
+  symbol: string;
+  x: number;
+  y: number;
+  size: number;
+  speed: number;
+  opacity: number;
+}
+
+const BG_SYMBOLS = ['+', '−', '×', '÷', '=', 'π', '√', '%', '∑', '∞', '±', 'Δ'];
+
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
   private width = 0;
   private height = 0;
   private _scale = 1;
   private particles: Particle[] = [];
+  private bgSymbols: BgSymbol[] = [];
 
   constructor(private canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext('2d')!;
     this.resize();
+    this.initBgSymbols();
     window.addEventListener('resize', () => this.resize());
   }
 
@@ -50,6 +63,45 @@ export class Renderer {
   clear(): void {
     this.ctx.fillStyle = CONFIG.BG_COLOR;
     this.ctx.fillRect(0, 0, this.width, this.height);
+    this.drawBgSymbols();
+  }
+
+  private initBgSymbols(): void {
+    this.bgSymbols = [];
+    for (let i = 0; i < 18; i++) {
+      this.bgSymbols.push({
+        symbol: BG_SYMBOLS[Math.floor(Math.random() * BG_SYMBOLS.length)],
+        x: Math.random(),
+        y: Math.random(),
+        size: 14 + Math.random() * 22,
+        speed: 8 + Math.random() * 15,
+        opacity: 0.04 + Math.random() * 0.04,
+      });
+    }
+  }
+
+  updateBgSymbols(dt: number): void {
+    for (const sym of this.bgSymbols) {
+      sym.y -= (sym.speed * this._scale / this.height) * dt;
+      if (sym.y < -0.05) {
+        sym.y = 1.05;
+        sym.x = Math.random();
+        sym.symbol = BG_SYMBOLS[Math.floor(Math.random() * BG_SYMBOLS.length)];
+      }
+    }
+  }
+
+  private drawBgSymbols(): void {
+    this.ctx.save();
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'middle';
+    for (const sym of this.bgSymbols) {
+      this.ctx.globalAlpha = sym.opacity;
+      this.ctx.fillStyle = '#ffffff';
+      this.ctx.font = `${this.s(sym.size)}px system-ui, sans-serif`;
+      this.ctx.fillText(sym.symbol, sym.x * this.width, sym.y * this.height);
+    }
+    this.ctx.restore();
   }
 
   // --- Back button (reusable) ---

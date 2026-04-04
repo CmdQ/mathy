@@ -80,11 +80,10 @@ export class Shape {
     ctx.scale(this.scale, this.scale);
     ctx.globalAlpha = this.opacity;
 
-    // Draw shape
-    ctx.fillStyle = this.color;
-    ctx.beginPath();
     const r = this.radius;
 
+    // Build shape path
+    ctx.beginPath();
     switch (this.type) {
       case 'circle':
         ctx.arc(0, 0, r, 0, Math.PI * 2);
@@ -108,16 +107,31 @@ export class Shape {
         ctx.closePath();
         break;
     }
-    ctx.fill();
 
-    // Draw shadow
-    ctx.shadowColor = 'rgba(0,0,0,0.3)';
-    ctx.shadowBlur = 8;
-    ctx.shadowOffsetY = 3;
+    // Linear gradient fill — light top-left, dark bottom-right
+    const grad = ctx.createLinearGradient(-r * 0.5, -r, r * 0.5, r);
+    grad.addColorStop(0, this.lightenColor(this.color, 45));
+    grad.addColorStop(0.45, this.color);
+    grad.addColorStop(1, this.darkenColor(this.color, 50));
+    ctx.fillStyle = grad;
+
+    // Floating shadow + fill in a single pass
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 20 * this.drawScale;
+    ctx.shadowOffsetX = 3 * this.drawScale;
+    ctx.shadowOffsetY = 10 * this.drawScale;
     ctx.fill();
     ctx.shadowColor = 'transparent';
 
-    // Draw answer label
+    // Thin bright edge along the top (clipped to shape)
+    ctx.save();
+    ctx.clip();
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 2 * this.drawScale;
+    ctx.stroke();
+    ctx.restore();
+
+    // Answer label
     ctx.fillStyle = '#fff';
     ctx.font = `bold ${Math.round(CONFIG.SHAPE_LABEL_FONT_SIZE * this.drawScale)}px system-ui, sans-serif`;
     ctx.textAlign = 'center';
@@ -126,6 +140,22 @@ export class Shape {
     ctx.fillText(String(this.answer), 0, textY);
 
     ctx.restore();
+  }
+
+  private lightenColor(hex: string, amount: number): string {
+    return this.adjustColor(hex, amount);
+  }
+
+  private darkenColor(hex: string, amount: number): string {
+    return this.adjustColor(hex, -amount);
+  }
+
+  private adjustColor(hex: string, amount: number): string {
+    const num = parseInt(hex.slice(1), 16);
+    const r = Math.min(255, Math.max(0, ((num >> 16) & 0xff) + amount));
+    const g = Math.min(255, Math.max(0, ((num >> 8) & 0xff) + amount));
+    const b = Math.min(255, Math.max(0, (num & 0xff) + amount));
+    return `rgb(${r},${g},${b})`;
   }
 
   triggerPop(): void {
