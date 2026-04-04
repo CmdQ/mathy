@@ -3,7 +3,7 @@ import { defineConfig } from 'vite';
 export default defineConfig(({ command }) => ({
   base: command === 'build' ? '/mathy/' : '/',
   test: {
-    exclude: ['node_modules', 'e2e'],
+    exclude: ['**/node_modules/**', '**/e2e/**', '**/dist/**', '**/coverage/**'],
     setupFiles: ['./src/test-setup-dom.ts'],
     environmentMatchGlobs: [
       ['src/**/*.dom.test.ts', 'jsdom'],

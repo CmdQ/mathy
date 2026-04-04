@@ -8,7 +8,7 @@ export default defineConfig({
     headless: true,
   },
   webServer: {
-    command: 'npm run dev',
+    command: 'npm run dev -- --strictPort',
     port: 5173,
     reuseExistingServer: !process.env.CI,
   },
